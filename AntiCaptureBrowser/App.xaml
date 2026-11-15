@@ -1,0 +1,18 @@
+<Application x:Class="AntiCaptureBrowser.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AntiCaptureBrowser"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="ChromeBgBrush" Color="#202124" />
+        <SolidColorBrush x:Key="ToolbarBgBrush" Color="#292A2D" />
+        <SolidColorBrush x:Key="TabActiveBrush" Color="#35363A" />
+        <SolidColorBrush x:Key="ForegroundBrush" Color="#E8EAED" />
+        <SolidColorBrush x:Key="ForegroundDimBrush" Color="#9AA0A6" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#8AB4F8" />
+        <SolidColorBrush x:Key="HoverBrush" Color="#3C4043" />
+        <SolidColorBrush x:Key="FieldBgBrush" Color="#202124" />
+        <SolidColorBrush x:Key="CardBgBrush" Color="#1E1F22" />
+        <SolidColorBrush x:Key="SuccessBrush" Color="#81C995" />
+    </Application.Resources>
+</Application>
