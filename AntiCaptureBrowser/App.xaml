@@ -25,5 +25,48 @@
         <SolidColorBrush x:Key="BadgeFgBrush" Color="#202124" />
         <SolidColorBrush x:Key="CloseHoverBrush" Color="#E81123" />
         <SolidColorBrush x:Key="SuccessBrush" Color="#81C995" />
+
+        <!-- 特细滚动条模板（仿 Chrome）：由使用方显式引用 -->
+        <ControlTemplate x:Key="SlimScrollBarTemplate" TargetType="ScrollBar">
+            <Grid Background="{TemplateBinding Background}">
+                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                    <Track.DecreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" Opacity="0" />
+                    </Track.DecreaseRepeatButton>
+                    <Track.IncreaseRepeatButton>
+                        <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" Opacity="0" />
+                    </Track.IncreaseRepeatButton>
+                    <Track.Thumb>
+                        <Thumb>
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                    <Border x:Name="thumb" Background="{DynamicResource BorderStrongBrush}"
+                                            CornerRadius="2" Margin="1" />
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="thumb" Property="Background"
+                                                    Value="{DynamicResource ForegroundDimBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsDragging" Value="True">
+                                            <Setter TargetName="thumb" Property="Background"
+                                                    Value="{DynamicResource ForegroundBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Track.Thumb>
+                </Track>
+            </Grid>
+        </ControlTemplate>
+        <Style x:Key="SlimScrollBar" TargetType="ScrollBar" BasedOn="{StaticResource {x:Type ScrollBar}}">
+            <!-- 关键：覆盖主题样式的 MinWidth/MinHeight 钳制，否则 Width 无法变细 -->
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Width" Value="5" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template" Value="{StaticResource SlimScrollBarTemplate}" />
+        </Style>
+        <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
     </Application.Resources>
 </Application>
