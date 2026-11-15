@@ -487,15 +487,94 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="14,2,0,0">
                                     <TextBlock Style="{StaticResource PageTitle}" Text="关于" />
-                                    <TextBlock Style="{StaticResource PageDesc}" Text="版本信息与数据存储位置" />
+                                    <TextBlock Style="{StaticResource PageDesc}" Text="版本、构建信息与开源组件" />
                                 </StackPanel>
                             </Grid>
+
+                            <!-- 版本与构建信息 -->
                             <Border Style="{StaticResource Card}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource FieldLabel}"
-                                               Text="AntiCaptureBrowser 1.0 — 基于 .NET 10 与 WebView2 的防捕获浏览器" />
-                                    <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                               Text="所有配置、缓存与浏览数据均保存在本程序目录下的 Data 文件夹中，可直接整个目录拷贝或删除。" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <Border Width="40" Height="40" CornerRadius="10"
+                                                Background="{DynamicResource AccentBrush}">
+                                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                                       Foreground="{DynamicResource BadgeFgBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="AntiCaptureBrowser" FontSize="20" FontWeight="Bold"
+                                                   VerticalAlignment="Center" Margin="12,0,0,0"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                    </StackPanel>
+                                    <Separator Background="{DynamicResource BorderBrush}" Margin="0,0,0,12" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                                   Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                                        <StackPanel Margin="10,0,0,0">
+                                            <TextBlock Text="构建信息" FontSize="13"
+                                                       Foreground="{DynamicResource ForegroundBrush}" />
+                                            <TextBlock x:Name="AboutVersionText" FontSize="12" Margin="0,3,0,0"
+                                                       Foreground="{DynamicResource AccentBrush}" />
+                                            <TextBlock x:Name="AboutChromiumText" FontSize="11.5" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource ForegroundDimBrush}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <Grid Margin="12,12,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="150" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition />
+                                            <RowDefinition />
+                                            <RowDefinition />
+                                            <RowDefinition />
+                                            <RowDefinition />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="运行时" />
+                                        <TextBlock Grid.Column="1" x:Name="AboutRuntimeText" FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                        <TextBlock Grid.Row="1" Style="{StaticResource FieldLabel}" Margin="0,6,0,0" Text="WebView2 运行时" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AboutWebView2RuntimeText" Margin="0,6,0,0" FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                        <TextBlock Grid.Row="2" Style="{StaticResource FieldLabel}" Margin="0,6,0,0" Text="WebView2 SDK" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="AboutWebView2SdkText" Margin="0,6,0,0" FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                        <TextBlock Grid.Row="3" Style="{StaticResource FieldLabel}" Margin="0,6,0,0" Text="构建时间 (UTC)" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="AboutBuildTimeText" Margin="0,6,0,0" FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                        <TextBlock Grid.Row="4" Style="{StaticResource FieldLabel}" Margin="0,6,0,0" Text="提交 ID" />
+                                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="AboutCommitText" Margin="0,6,0,0" FontSize="12"
+                                                   Foreground="{DynamicResource ForegroundBrush}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 开源组件 -->
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Text="使用的包与库" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ForegroundBrush}" Margin="0,0,0,10" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text=".NET 10 / WPF" />
+                                    <TextBlock Style="{StaticResource Hint}" Text="应用运行时与 UI 框架" />
+                                    <TextBlock x:Name="CompRuntimeText" Style="{StaticResource Hint}" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                                    <Separator Background="{DynamicResource BorderBrush}" Margin="0,12" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Microsoft.Web.WebView2" />
+                                    <TextBlock Style="{StaticResource Hint}" Text="WebView2 浏览器内核宿主（组合模式渲染）" />
+                                    <TextBlock x:Name="CompWebView2Text" Style="{StaticResource Hint}" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                                    <Separator Background="{DynamicResource BorderBrush}" Margin="0,12" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Microsoft.Windows.SDK.NET" />
+                                    <TextBlock Style="{StaticResource Hint}" Text="Windows API 投影（WebView2 组合渲染依赖）" />
+                                    <TextBlock x:Name="CompSdkNetText" Style="{StaticResource Hint}" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 版权与许可 -->
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="AntiCaptureBrowser" />
+                                    <TextBlock x:Name="AboutCopyrightText" Style="{StaticResource Hint}" Margin="0,4,0,10" />
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="基于 .NET 10 与 WebView2 构建。配置、缓存与浏览数据保存在本程序目录下的 Data 文件夹中，可直接整个目录拷贝或删除。" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

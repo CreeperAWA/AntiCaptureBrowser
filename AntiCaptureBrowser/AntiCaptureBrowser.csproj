@@ -16,4 +16,24 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
   </ItemGroup>
 
+  <!-- 构建元数据：提交 ID 与构建时间，供「关于」页展示 -->
+  <PropertyGroup>
+    <GitCommitId>unknown</GitCommitId>
+  </PropertyGroup>
+  <Target Name="EmbedBuildMetadata" BeforeTargets="PrepareForBuild">
+    <Exec Command="git rev-parse --short HEAD 2&gt;nul || echo unknown" ConsoleToMSBuild="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitId" />
+    </Exec>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>CommitId</_Parameter1>
+        <_Parameter2>$(GitCommitId)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildTimeUtc</_Parameter1>
+        <_Parameter2>$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm:ss'))</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
 </Project>
