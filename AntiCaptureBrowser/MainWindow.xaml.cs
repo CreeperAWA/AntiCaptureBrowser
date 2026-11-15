@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -36,6 +37,9 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await OpenHomeTabAsync();
         // 系统主题切换时同步所有已打开标签页的配色
         ThemeManager.ThemeChanged += ApplyThemeToTabs;
+        // 标签页数量或窗口尺寸变化时重算宽度
+        Tabs.CollectionChanged += (_, _) => UpdateTabWidths();
+        TabScroll.SizeChanged += (_, _) => UpdateTabWidths();
     }
 
     private void ApplyThemeToTabs()
@@ -402,6 +406,102 @@ public partial class MainWindow : Window
             else tab.Unsilence();
         }
         _mediaSilencedByApp = on;
+    }
+
+    // ==================== 标签页宽度自适应（仿 Chrome）与拖动排序 ====================
+
+    private const double MaxTabWidth = 170;      // 标签最大宽度
+    private const double CompactThreshold = 150; // 低于此宽度：关闭按钮仅在激活/悬停的标签上显示
+    private const double IconThreshold = 66;     // 低于此宽度：仅显示图标
+    private const double MinTabWidth = 42;       // 图标模式最小宽度
+    private const double TabStripReserve = 40;   // 标签栏中新建按钮及其边距占用的宽度
+
+    private BrowserTab? _pendingDragTab;
+    private Point _pendingDragStart;
+    private BrowserTab? _dragTab;
+    private Point _dragStartPos;
+    private bool _isDragging;
+
+    /// <summary>按标签数量与可用宽度计算每个标签的宽度和尺寸模式。</summary>
+    private void UpdateTabWidths()
+    {
+        int n = Tabs.Count;
+        if (n == 0 || TabScroll.ViewportWidth <= 0) return;
+
+        double avail = TabScroll.ViewportWidth - TabStripReserve - n * 2; // 减去新建按钮与每个标签的右外边距
+        double w = Math.Clamp(avail / n, MinTabWidth, MaxTabWidth);
+        var mode = w >= CompactThreshold ? TabSizingMode.Full
+                 : w >= IconThreshold ? TabSizingMode.Compact
+                 : TabSizingMode.Icon;
+        w = Math.Round(w);
+
+        foreach (var tab in Tabs)
+        {
+            tab.TabWidthMode = mode;
+            tab.TabWidth = w;
+        }
+    }
+
+    private void TabButton_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        if (sender is not FrameworkElement { DataContext: BrowserTab tab }) return;
+        _pendingDragTab = tab;
+        _pendingDragStart = e.GetPosition(TabScroll);
+    }
+
+    // 中键点击标签页直接关闭（Chrome 习惯）
+    private void TabButton_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Middle && sender is FrameworkElement { DataContext: BrowserTab tab })
+        {
+            OnTabCloseRequested(tab, EventArgs.Empty);
+        }
+    }
+
+    private void TabStrip_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        // 按下并移动超过阈值 → 开始拖动（捕获到稳定的 TabScroll 上，重排时不丢捕获）
+        if (!_isDragging && _pendingDragTab is not null && e.MouseDevice.LeftButton == MouseButtonState.Pressed)
+        {
+            var pos = e.GetPosition(TabScroll);
+            if (Math.Abs(pos.X - _pendingDragStart.X) > 6 || Math.Abs(pos.Y - _pendingDragStart.Y) > 6)
+            {
+                _dragTab = _pendingDragTab;
+                _pendingDragTab = null;
+                _isDragging = true;
+                TabScroll.CaptureMouse();
+            }
+        }
+
+        if (!_isDragging || _dragTab is null) return;
+        int n = Tabs.Count;
+        if (n < 2) return;
+
+        // 光标落在第几个标签区间上 → 实时移动到该位置
+        var p = e.GetPosition(TabsList);
+        double unit = _dragTab.TabWidth + 2; // 含右外边距
+        int target = Math.Clamp((int)(p.X / unit), 0, n - 1);
+        int current = Tabs.IndexOf(_dragTab);
+        if (target != current)
+        {
+            Tabs.Move(current, target);
+        }
+    }
+
+    private void TabStrip_PreviewMouseUp(object sender, MouseButtonEventArgs e) => EndTabDrag();
+
+    private void TabScroll_LostMouseCapture(object sender, MouseEventArgs e) => EndTabDrag();
+
+    private void EndTabDrag()
+    {
+        _pendingDragTab = null;
+        _dragTab = null;
+        if (_isDragging)
+        {
+            _isDragging = false;
+            if (TabScroll.IsMouseCaptured) TabScroll.ReleaseMouseCapture();
+        }
     }
 
     // ==================== 窗口级快捷键（焦点不在网页内时） ====================

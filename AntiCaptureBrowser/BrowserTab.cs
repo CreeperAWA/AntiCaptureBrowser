@@ -8,6 +8,17 @@ using Microsoft.Web.WebView2.Core;
 
 namespace AntiCaptureBrowser;
 
+/// <summary>标签页尺寸模式（随标签数量自适应，仿 Chrome）。</summary>
+public enum TabSizingMode
+{
+    /// <summary>完整：标题 + 常显关闭按钮。</summary>
+    Full,
+    /// <summary>紧凑：标题，关闭按钮仅在激活或悬停的标签上显示。</summary>
+    Compact,
+    /// <summary>仅图标：悬停时图标临时替换为关闭按钮。</summary>
+    Icon,
+}
+
 /// <summary>
 /// 一个浏览器标签页：普通标签页内含 WebView2；设置标签页承载 SettingsView。
 /// </summary>
@@ -34,6 +45,22 @@ public class BrowserTab : INotifyPropertyChanged
     {
         get => _isSelected;
         set { if (_isSelected != value) { _isSelected = value; OnPropertyChanged(); } }
+    }
+
+    private double _tabWidth = 170;
+    /// <summary>标签页当前宽度（由主窗口按标签数量自适应计算）。</summary>
+    public double TabWidth
+    {
+        get => _tabWidth;
+        set { if (Math.Abs(_tabWidth - value) > 0.5) { _tabWidth = value; OnPropertyChanged(); } }
+    }
+
+    private TabSizingMode _tabWidthMode = TabSizingMode.Full;
+    /// <summary>当前尺寸模式（控制关闭按钮/标题/图标的显示策略）。</summary>
+    public TabSizingMode TabWidthMode
+    {
+        get => _tabWidthMode;
+        set { if (_tabWidthMode != value) { _tabWidthMode = value; OnPropertyChanged(); } }
     }
 
     public string CurrentUrl => WebView?.CoreWebView2?.Source ?? WebView?.Source?.ToString() ?? "";

@@ -123,7 +123,10 @@
                 </Border>
 
                 <!-- 标签页 + 新建标签页按钮（跟随末尾，与标签垂直居中对齐） -->
-                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                <ScrollViewer x:Name="TabScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseMove="TabStrip_PreviewMouseMove"
+                              PreviewMouseLeftButtonUp="TabStrip_PreviewMouseUp"
+                              LostMouseCapture="TabScroll_LostMouseCapture">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
                         <ItemsControl x:Name="TabsList" VerticalAlignment="Bottom">
                         <ItemsControl.ItemsPanel>
@@ -133,22 +136,30 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Height="34" Margin="0,0,2,0" Click="TabButton_Click" Cursor="Hand"
-                                        Foreground="{DynamicResource ForegroundBrush}" ToolTip="{Binding Title}"
+                                <Button Height="34" Width="{Binding TabWidth}" Margin="0,0,2,0" Click="TabButton_Click"
+                                        PreviewMouseLeftButtonDown="TabButton_MouseDown" MouseUp="TabButton_MouseUp"
+                                        Cursor="Hand" Foreground="{DynamicResource ForegroundBrush}" ToolTip="{Binding Title}"
                                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="bd" CornerRadius="7,7,0,0" Padding="10,0,4,0">
-                                                <DockPanel>
-                                                    <Button x:Name="CloseBtn" DockPanel.Dock="Right"
-                                                            Width="20" Height="20" Margin="6,0,0,0"
-                                                            Content="&#xE711;" FontSize="9"
-                                                            Style="{StaticResource IconButton}"
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="TitleText" Text="{Binding Title}"
+                                                               VerticalAlignment="Center" HorizontalAlignment="Left"
+                                                               TextTrimming="CharacterEllipsis" FontSize="12" />
+                                                    <TextBlock x:Name="IconGlyph" Grid.Column="0" Text="&#xE774;"
+                                                               FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Visibility="Collapsed" />
+                                                    <Button x:Name="CloseBtn" Grid.Column="1" Width="20" Height="20"
+                                                            Margin="6,0,0,0" Content="&#xE711;" FontSize="9"
+                                                            Style="{StaticResource IconButton}" Visibility="Collapsed"
                                                             Click="TabClose_Click" ToolTip="关闭标签页 (Ctrl+W)" />
-                                                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center"
-                                                               MaxWidth="160" TextTrimming="CharacterEllipsis"
-                                                               FontSize="12" />
-                                                </DockPanel>
+                                                </Grid>
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
@@ -161,6 +172,25 @@
                                                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
                                                     </MultiDataTrigger.Conditions>
                                                     <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hover2Brush}" />
+                                                </MultiDataTrigger>
+                                                <!-- 关闭按钮：Full 常显；Compact/Icon 仅在激活或悬停的标签上显示 -->
+                                                <DataTrigger Binding="{Binding TabWidthMode}" Value="Full">
+                                                    <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <Trigger SourceName="bd" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible" />
+                                                </Trigger>
+                                                <!-- 图标模式：标题隐藏、显示图标；悬停时图标临时替换为关闭按钮 -->
+                                                <DataTrigger Binding="{Binding TabWidthMode}" Value="Icon">
+                                                    <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed" />
+                                                    <Setter TargetName="IconGlyph" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding TabWidthMode}" Value="Icon" />
+                                                        <Condition Binding="{Binding IsMouseOver, ElementName=bd}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter TargetName="IconGlyph" Property="Visibility" Value="Collapsed" />
                                                 </MultiDataTrigger>
                                                 <Trigger SourceName="CloseBtn" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Foreground" Value="White" />
