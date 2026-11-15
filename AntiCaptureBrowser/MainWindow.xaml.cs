@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private BrowserTab? _selectedTab;
     private CoreWebView2Environment? _environment;
     private readonly HotkeyService _hotkeyService = new();
+    private readonly AppKeyboardHook _keyboardHook = new();
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
 
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
         Closing += (_, _) =>
         {
             _hotkeyService.Dispose();
+            _keyboardHook.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
         };
         Loaded += async (_, _) => await OpenHomeTabAsync();
@@ -63,6 +65,31 @@ public partial class MainWindow : Window
         ApplyCaptureMode();
         RegisterGlobalHotkey();
         EnableRoundedCorners();
+        // 窗口式宿主下网页获得焦点时 WPF 收不到键盘事件，改由低级钩子提供宿主快捷键
+        _keyboardHook.ShortcutPressed += OnKeyboardShortcut;
+        _keyboardHook.Install(this);
+    }
+
+    private void OnKeyboardShortcut(string action)
+    {
+        switch (action)
+        {
+            case "newtab":
+                OnTabNewTabRequested(this, null);
+                break;
+            case "closetab":
+                if (_selectedTab is not null) OnTabCloseRequested(_selectedTab, EventArgs.Empty);
+                break;
+            case "address":
+                OnFocusAddressRequested(this, EventArgs.Empty);
+                break;
+            case "cycle":
+                CycleTab(false);
+                break;
+            case "cycleback":
+                CycleTab(true);
+                break;
+        }
     }
 
     // Win11 圆角（DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2）；旧系统自动忽略
@@ -131,8 +158,6 @@ public partial class MainWindow : Window
     {
         tab.NewTabRequested += OnTabNewTabRequested;
         tab.CloseRequested += OnTabCloseRequested;
-        tab.FocusAddressRequested += OnFocusAddressRequested;
-        tab.CycleTabRequested += (_, backward) => CycleTab(backward);
         tab.AddressChanged += OnSelectedTabAddressChanged;
         tab.HistoryChanged += OnSelectedTabHistoryChanged;
         tab.PropertyChanged += OnTabPropertyChanged;
@@ -645,41 +670,12 @@ public partial class MainWindow : Window
         }
     }
 
-    // ==================== 窗口级快捷键（焦点不在网页内时） ====================
+    // ==================== 窗口级快捷键（焦点在 WPF 控件上时） ====================
+    // Ctrl+T/W/L/K/Ctrl+Tab 已由 AppKeyboardHook 在前台统一拦截（网页获得焦点时同样生效）
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
-        var mods = Keyboard.Modifiers;
-        if (mods == ModifierKeys.Control)
-        {
-            switch (e.Key)
-            {
-                case Key.T:
-                    e.Handled = true;
-                    OnTabNewTabRequested(this, null);
-                    break;
-                case Key.W:
-                case Key.F4:
-                    e.Handled = true;
-                    if (_selectedTab is not null) OnTabCloseRequested(_selectedTab, EventArgs.Empty);
-                    break;
-                case Key.L:
-                case Key.K:
-                    e.Handled = true;
-                    OnFocusAddressRequested(this, EventArgs.Empty);
-                    break;
-                case Key.Tab:
-                    e.Handled = true;
-                    CycleTab(false);
-                    break;
-            }
-        }
-        else if (mods == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Tab)
-        {
-            e.Handled = true;
-            CycleTab(true);
-        }
-        else if (mods == ModifierKeys.Alt && e.Key == Key.Home)
+        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key == Key.Home)
         {
             e.Handled = true;
             _selectedTab?.Navigate(GetHomePageUrl());

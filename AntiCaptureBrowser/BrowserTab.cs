@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using AntiCaptureBrowser.Services;
@@ -31,7 +30,8 @@ public class BrowserTab : INotifyPropertyChanged
     /// <summary>标签页内容宿主，直接放入主窗口的 ContentControl。</summary>
     public Grid Host { get; }
 
-    public Microsoft.Web.WebView2.Wpf.WebView2CompositionControl? WebView { get; private set; }
+    /// <summary>窗口式 WebView2 宿主（原生子窗口直渲，视频/滚动性能最佳）。</summary>
+    public Microsoft.Web.WebView2.Wpf.WebView2? WebView { get; private set; }
 
     public bool IsWebViewReady { get; private set; }
 
@@ -89,8 +89,6 @@ public class BrowserTab : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public event EventHandler<string?>? NewTabRequested;      // null = 打开主页
     public event EventHandler? CloseRequested;
-    public event EventHandler? FocusAddressRequested;
-    public event EventHandler<bool>? CycleTabRequested;      // true = 向左循环
     public event EventHandler<string>? AddressChanged;
     public event EventHandler? HistoryChanged;
 
@@ -117,7 +115,7 @@ public class BrowserTab : INotifyPropertyChanged
     {
         if (IsSettingsTab || IsWebViewReady) return;
 
-        var webView = new Microsoft.Web.WebView2.Wpf.WebView2CompositionControl();
+        var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
         Host.Children.Add(webView);
         WebView = webView;
 
@@ -155,7 +153,7 @@ public class BrowserTab : INotifyPropertyChanged
             if (IconSource is null) await LoadFaviconAsync(core);
         };
         // 组合模式控件的键盘输入走 WPF 管线，用 PreviewKeyDown 拦截宿主级快捷键
-        webView.PreviewKeyDown += OnTabPreviewKeyDown;
+        // （已改为窗口式宿主：宿主级快捷键由 AppKeyboardHook 低级钩子统一处理）
 
         core.Settings.AreDefaultContextMenusEnabled = true;
         // 让网页内容跟随应用主题（prefers-color-scheme）
@@ -234,36 +232,6 @@ public class BrowserTab : INotifyPropertyChanged
         {
             // 无可用图标（如 about:blank）时回退到默认标识
             IconSource = null;
-        }
-    }
-
-    // WebView2 自带加速键处理不了宿主级快捷键，在这里拦截（Handled=true 则不再传给网页）
-    private void OnTabPreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        var mods = Keyboard.Modifiers;
-        if (!mods.HasFlag(ModifierKeys.Control)) return;
-
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        switch (key)
-        {
-            case Key.T: // 新建标签页
-                e.Handled = true;
-                NewTabRequested?.Invoke(this, null);
-                break;
-            case Key.W: // 关闭标签页
-            case Key.F4:
-                e.Handled = true;
-                CloseRequested?.Invoke(this, EventArgs.Empty);
-                break;
-            case Key.L: // 聚焦地址栏
-            case Key.K:
-                e.Handled = true;
-                FocusAddressRequested?.Invoke(this, EventArgs.Empty);
-                break;
-            case Key.Tab: // Ctrl+Tab / Ctrl+Shift+Tab 切换标签页
-                e.Handled = true;
-                CycleTabRequested?.Invoke(this, mods.HasFlag(ModifierKeys.Shift));
-                break;
         }
     }
 
