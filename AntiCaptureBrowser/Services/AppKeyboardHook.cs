@@ -56,16 +56,19 @@ public sealed class AppKeyboardHook : IDisposable
     }
 
     private IntPtr _hook;
+    private readonly LowLevelKeyboardProc _hookProc; // 必须持有委托引用，否则被 GC 回收后回调会导致 ExecutionEngineException
     private IntPtr _mainHwnd;
 
     /// <summary>宿主快捷键（"newtab" / "closetab" / "address" / "cycle" / "cycleback"），在 UI 线程触发。</summary>
     public event Action<string>? ShortcutPressed;
 
+    public AppKeyboardHook() => _hookProc = HookProc;
+
     public void Install(Window window)
     {
         if (_hook != IntPtr.Zero) return;
         _mainHwnd = new WindowInteropHelper(window).EnsureHandle();
-        _hook = SetWindowsHookEx(WhKeyboardLl, HookProc, GetModuleHandle(null), 0);
+        _hook = SetWindowsHookEx(WhKeyboardLl, _hookProc, GetModuleHandle(null), 0);
     }
 
     private IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam)
