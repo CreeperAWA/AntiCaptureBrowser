@@ -149,9 +149,15 @@
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock x:Name="IconGlyph" Text="&#xE774;"
-                                                               FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                                               Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <Grid x:Name="IconHost" Width="16" Margin="0,0,6,0"
+                                                          VerticalAlignment="Center">
+                                                        <Image x:Name="FaviconImage" Source="{Binding IconSource}"
+                                                               Stretch="Uniform" />
+                                                        <TextBlock x:Name="IconGlyph" Text="&#xE774;"
+                                                                   FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                   Visibility="Collapsed" />
+                                                    </Grid>
                                                     <TextBlock x:Name="TitleText" Grid.Column="1" Text="{Binding Title}"
                                                                VerticalAlignment="Center" HorizontalAlignment="Left"
                                                                TextTrimming="CharacterEllipsis" FontSize="12" />
@@ -180,6 +186,11 @@
                                                 <Trigger SourceName="bd" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible" />
                                                 </Trigger>
+                                                <!-- 无 favicon 时显示地球兜底标识 -->
+                                                <DataTrigger Binding="{Binding IconSource}" Value="{x:Null}">
+                                                    <Setter TargetName="FaviconImage" Property="Visibility" Value="Collapsed" />
+                                                    <Setter TargetName="IconGlyph" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
                                                 <!-- 图标模式：标题隐藏；悬停时图标临时替换为关闭按钮 -->
                                                 <DataTrigger Binding="{Binding TabWidthMode}" Value="Icon">
                                                     <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed" />
@@ -189,7 +200,7 @@
                                                         <Condition Binding="{Binding TabWidthMode}" Value="Icon" />
                                                         <Condition Binding="{Binding IsMouseOver, ElementName=bd}" Value="True" />
                                                     </MultiDataTrigger.Conditions>
-                                                    <Setter TargetName="IconGlyph" Property="Visibility" Value="Collapsed" />
+                                                    <Setter TargetName="IconHost" Property="Visibility" Value="Collapsed" />
                                                 </MultiDataTrigger>
                                                 <Trigger SourceName="CloseBtn" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Foreground" Value="White" />

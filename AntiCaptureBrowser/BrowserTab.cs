@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using AntiCaptureBrowser.Services;
 using Microsoft.Web.WebView2.Core;
 
@@ -65,6 +67,21 @@ public class BrowserTab : INotifyPropertyChanged
 
     /// <summary>固定（Pin）：始终仅图标模式、固定最小宽度。</summary>
     public bool Pinned { get; set; }
+
+    private ImageSource? _iconSource;
+    /// <summary>站点图标（favicon），由 WebView2 提供；无图标时模板回退到地球标识。</summary>
+    public ImageSource? IconSource
+    {
+        get => _iconSource;
+        set
+        {
+            if (!ReferenceEquals(_iconSource, value))
+            {
+                _iconSource = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public string CurrentUrl => WebView?.CoreWebView2?.Source ?? WebView?.Source?.ToString() ?? "";
 
@@ -130,6 +147,8 @@ public class BrowserTab : INotifyPropertyChanged
             NewTabRequested?.Invoke(this, e.Uri);
         };
         core.WindowCloseRequested += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
+        // 站点图标变化时加载真实 favicon
+        core.FaviconChanged += async (_, _) => await LoadFaviconAsync(core);
         // 组合模式控件的键盘输入走 WPF 管线，用 PreviewKeyDown 拦截宿主级快捷键
         webView.PreviewKeyDown += OnTabPreviewKeyDown;
 
@@ -180,6 +199,31 @@ public class BrowserTab : INotifyPropertyChanged
         var core = WebView?.CoreWebView2;
         if (core is null) return;
         core.IsMuted = _wasMutedBeforeSilence;
+    }
+
+    private async Task LoadFaviconAsync(CoreWebView2 core)
+    {
+        try
+        {
+            using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
+            if (stream is null)
+            {
+                IconSource = null;
+                return;
+            }
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.StreamSource = stream;
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            IconSource = bitmap;
+        }
+        catch
+        {
+            // 无可用图标（如 about:blank）时回退到默认标识
+            IconSource = null;
+        }
     }
 
     // WebView2 自带加速键处理不了宿主级快捷键，在这里拦截（Handled=true 则不再传给网页）
