@@ -529,7 +529,12 @@ public partial class MainWindow : Window
 
     private void TabStrip_PreviewMouseUp(object sender, MouseButtonEventArgs e) => EndTabDrag();
 
-    private void TabScroll_LostMouseCapture(object sender, MouseEventArgs e) => EndTabDrag();
+    private void TabScroll_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        // LostMouseCapture 是冒泡事件：拖动开始时标签按钮失去捕获会冒泡到这里，
+        // 仅当 TabScroll 自身失去捕获（真正结束）时才终止拖动
+        if (ReferenceEquals(e.OriginalSource, TabScroll)) EndTabDrag();
+    }
 
     private void EndTabDrag()
     {
