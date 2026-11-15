@@ -147,8 +147,13 @@ public class BrowserTab : INotifyPropertyChanged
             NewTabRequested?.Invoke(this, e.Uri);
         };
         core.WindowCloseRequested += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
-        // 站点图标变化时加载真实 favicon
+        // 站点图标变化时加载真实 favicon；导航完成后兜底补抓一次
         core.FaviconChanged += async (_, _) => await LoadFaviconAsync(core);
+        core.NavigationCompleted += async (_, _) =>
+        {
+            await Task.Delay(600);
+            if (IconSource is null) await LoadFaviconAsync(core);
+        };
         // 组合模式控件的键盘输入走 WPF 管线，用 PreviewKeyDown 拦截宿主级快捷键
         webView.PreviewKeyDown += OnTabPreviewKeyDown;
 
@@ -205,6 +210,12 @@ public class BrowserTab : INotifyPropertyChanged
     {
         try
         {
+            // FaviconChanged 可能来自非 UI 线程，绑定更新必须回到 UI 线程
+            if (!Application.Current.Dispatcher.CheckAccess())
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() => LoadFaviconAsync(core));
+                return;
+            }
             using var stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png);
             if (stream is null)
             {
