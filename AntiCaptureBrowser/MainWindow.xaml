@@ -8,8 +8,8 @@
         Title="AntiCaptureBrowser" Height="760" Width="1180"
         MinHeight="460" MinWidth="720"
         WindowStyle="None" ResizeMode="CanResize"
-        Background="{StaticResource ChromeBgBrush}"
-        BorderBrush="#3C4043" BorderThickness="1"
+        Background="{DynamicResource ChromeBgBrush}"
+        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
         KeyDown="Window_KeyDown"
         UseLayoutRounding="True">
 
@@ -25,7 +25,7 @@
         <!-- 导航/图标按钮 -->
         <Style x:Key="IconButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Width" Value="34" />
             <Setter Property="Height" Value="30" />
@@ -41,10 +41,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Foreground" Value="{StaticResource ForegroundDimBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource ForegroundDimBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -66,7 +66,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource HoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -84,7 +84,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#E81123" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource CloseHoverBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -102,7 +102,7 @@
         </Grid.RowDefinitions>
 
         <!-- ============ 自定义标题栏（含标签页栏） ============ -->
-        <Border Grid.Row="0" Background="{StaticResource ChromeBgBrush}">
+        <Border Grid.Row="0" Background="{DynamicResource ChromeBgBrush}">
             <DockPanel Margin="10,0,0,0" LastChildFill="True">
                 <!-- 窗口控制按钮 -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
@@ -124,9 +124,9 @@
 
                 <!-- 应用标识 -->
                 <Border Width="30" Height="30" CornerRadius="6" Margin="0,0,8,5"
-                        VerticalAlignment="Bottom" Background="#8AB4F8">
+                        VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                               Foreground="#202124" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource BadgeFgBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
                 <!-- 标签页 -->
@@ -140,7 +140,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Height="34" Margin="0,0,2,0" Click="TabButton_Click" Cursor="Hand"
-                                        Foreground="{StaticResource ForegroundBrush}" ToolTip="{Binding Title}"
+                                        Foreground="{DynamicResource ForegroundBrush}" ToolTip="{Binding Title}"
                                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
@@ -159,14 +159,14 @@
                                             <ControlTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                     <Setter TargetName="bd" Property="Background"
-                                                            Value="{StaticResource TabActiveBrush}" />
+                                                            Value="{DynamicResource TabActiveBrush}" />
                                                 </DataTrigger>
                                                 <MultiDataTrigger>
                                                     <MultiDataTrigger.Conditions>
                                                         <Condition Binding="{Binding IsSelected}" Value="False" />
                                                         <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
                                                     </MultiDataTrigger.Conditions>
-                                                    <Setter TargetName="bd" Property="Background" Value="#2B2C2F" />
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hover2Brush}" />
                                                 </MultiDataTrigger>
                                                 <Trigger SourceName="CloseBtn" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Foreground" Value="White" />
@@ -183,7 +183,7 @@
         </Border>
 
         <!-- ============ 工具栏 ============ -->
-        <Border Grid.Row="1" Background="{StaticResource ToolbarBgBrush}" Padding="6,5">
+        <Border Grid.Row="1" Background="{DynamicResource ToolbarBgBrush}" Padding="6,5">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button x:Name="BtnBack" Style="{StaticResource IconButton}" Content="&#xE72B;"
@@ -197,11 +197,11 @@
                 </StackPanel>
                 <Button DockPanel.Dock="Right" x:Name="BtnSettings" Style="{StaticResource IconButton}"
                         Content="&#xE713;" ToolTip="设置" Click="BtnSettings_Click" />
-                <Border Background="{StaticResource FieldBgBrush}" CornerRadius="15"
+                <Border Background="{DynamicResource FieldBgBrush}" CornerRadius="15"
                         Margin="8,0" Padding="12,5" VerticalAlignment="Center">
                     <TextBox x:Name="AddressBox" Background="Transparent" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrush}"
-                             CaretBrush="{StaticResource ForegroundBrush}"
+                             Foreground="{DynamicResource ForegroundBrush}"
+                             CaretBrush="{DynamicResource ForegroundBrush}"
                              FontSize="13" MinWidth="200"
                              KeyDown="AddressBox_KeyDown"
                              GotKeyboardFocus="AddressBox_GotKeyboardFocus" />
@@ -210,7 +210,7 @@
         </Border>
 
         <!-- ============ 标签页内容 ============ -->
-        <Grid Grid.Row="2" Background="{StaticResource ChromeBgBrush}">
+        <Grid Grid.Row="2" Background="{DynamicResource ChromeBgBrush}">
             <ContentControl x:Name="TabContent" Focusable="False" />
         </Grid>
 

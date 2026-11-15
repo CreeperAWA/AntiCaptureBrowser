@@ -28,8 +28,23 @@ public partial class MainWindow : Window
         InitializeComponent();
         TabsList.ItemsSource = Tabs;
         StateChanged += OnStateChanged;
-        Closing += (_, _) => _hotkeyService.Dispose();
+        Closing += (_, _) =>
+        {
+            _hotkeyService.Dispose();
+            ThemeManager.ThemeChanged -= ApplyThemeToTabs;
+        };
         Loaded += async (_, _) => await OpenHomeTabAsync();
+        // 系统主题切换时同步所有已打开标签页的配色
+        ThemeManager.ThemeChanged += ApplyThemeToTabs;
+    }
+
+    private void ApplyThemeToTabs()
+    {
+        foreach (var tab in Tabs)
+        {
+            var core = tab.WebView?.CoreWebView2;
+            if (core is not null) core.Profile.PreferredColorScheme = ThemeManager.WebViewColorScheme;
+        }
     }
 
     // ==================== 初始化 ====================

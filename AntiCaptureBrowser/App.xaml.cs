@@ -12,6 +12,8 @@ public partial class App : Application
     {
         base.OnStartup(e);
         Settings = SettingsService.Load();
+        // 按系统主题着色（深/浅），此后监听系统主题变更实时切换
+        ThemeManager.Initialize();
     }
 
     protected override void OnExit(ExitEventArgs e)

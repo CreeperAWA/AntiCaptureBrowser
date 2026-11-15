@@ -56,11 +56,10 @@ public class BrowserTab : INotifyPropertyChanged
     {
         IsSettingsTab = isSettingsTab;
         Host = new Grid();
+        // 背景交给主窗口 / SettingsView 自身（跟随主题），宿主保持透明
         if (isSettingsTab)
         {
             Title = "设置";
-            Host.Background = new System.Windows.Media.SolidColorBrush(
-                System.Windows.Media.Color.FromRgb(0x29, 0x2A, 0x2D));
         }
     }
 
@@ -105,6 +104,8 @@ public class BrowserTab : INotifyPropertyChanged
         webView.PreviewKeyDown += OnTabPreviewKeyDown;
 
         core.Settings.AreDefaultContextMenusEnabled = true;
+        // 让网页内容跟随应用主题（prefers-color-scheme）
+        core.Profile.PreferredColorScheme = ThemeManager.WebViewColorScheme;
 
         if (!string.IsNullOrWhiteSpace(initialUrl))
         {

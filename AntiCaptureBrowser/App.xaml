@@ -4,6 +4,7 @@
              xmlns:local="clr-namespace:AntiCaptureBrowser"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+        <!-- 默认（深色）调色板；启动时由 ThemeManager 按系统主题覆盖 -->
         <SolidColorBrush x:Key="ChromeBgBrush" Color="#202124" />
         <SolidColorBrush x:Key="ToolbarBgBrush" Color="#292A2D" />
         <SolidColorBrush x:Key="TabActiveBrush" Color="#35363A" />
@@ -11,8 +12,18 @@
         <SolidColorBrush x:Key="ForegroundDimBrush" Color="#9AA0A6" />
         <SolidColorBrush x:Key="AccentBrush" Color="#8AB4F8" />
         <SolidColorBrush x:Key="HoverBrush" Color="#3C4043" />
+        <SolidColorBrush x:Key="Hover2Brush" Color="#2B2C2F" />
         <SolidColorBrush x:Key="FieldBgBrush" Color="#202124" />
         <SolidColorBrush x:Key="CardBgBrush" Color="#1E1F22" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#323336" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#3C4043" />
+        <SolidColorBrush x:Key="BorderStrongBrush" Color="#5F6368" />
+        <SolidColorBrush x:Key="AccentTintBrush" Color="#1E2B3D" />
+        <SolidColorBrush x:Key="PageIconBgBrush" Color="#33415580" />
+        <SolidColorBrush x:Key="PopupBgBrush" Color="#2B2C2F" />
+        <SolidColorBrush x:Key="SelectedComboBrush" Color="#3C5A99" />
+        <SolidColorBrush x:Key="BadgeFgBrush" Color="#202124" />
+        <SolidColorBrush x:Key="CloseHoverBrush" Color="#E81123" />
         <SolidColorBrush x:Key="SuccessBrush" Color="#81C995" />
     </Application.Resources>
 </Application>
