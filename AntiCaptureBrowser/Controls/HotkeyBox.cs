@@ -11,7 +11,14 @@ public class HotkeyBox : TextBox
 {
     public static readonly DependencyProperty HotkeyValueProperty = DependencyProperty.Register(
         nameof(HotkeyValue), typeof(string), typeof(HotkeyBox),
-        new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault));
+        new FrameworkPropertyMetadata(string.Empty, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnHotkeyValueChanged));
+
+    private static void OnHotkeyValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // 让只读文本框始终显示当前已设置的热键
+        string value = e.NewValue as string ?? string.Empty;
+        ((HotkeyBox)d).Text = string.IsNullOrEmpty(value) ? "（点击后按下组合键）" : value;
+    }
 
     public static readonly RoutedEvent HotkeyChangedEvent = EventManager.RegisterRoutedEvent(
         nameof(HotkeyChanged), RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(HotkeyBox));
