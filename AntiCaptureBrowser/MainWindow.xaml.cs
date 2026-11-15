@@ -7,6 +7,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using AntiCaptureBrowser.Models;
 using AntiCaptureBrowser.Services;
@@ -38,7 +40,9 @@ public partial class MainWindow : Window
         // 系统主题切换时同步所有已打开标签页的配色
         ThemeManager.ThemeChanged += ApplyThemeToTabs;
         // 标签页数量或窗口尺寸变化时重算宽度
-        Tabs.CollectionChanged += (_, _) => UpdateTabWidths();
+        Tabs.CollectionChanged += (_, e) => UpdateTabWidths(
+            e.Action is NotifyCollectionChangedAction.Add or NotifyCollectionChangedAction.Remove
+                or NotifyCollectionChangedAction.Reset);
         TabScroll.SizeChanged += (_, _) => UpdateTabWidths();
     }
 
@@ -136,7 +140,9 @@ public partial class MainWindow : Window
 
     // ==================== 标签页管理 ====================
 
-    private async void OnTabNewTabRequested(object? sender, string? url)
+    private async void OnTabNewTabRequested(object? sender, string? url) => await OpenNewTabAsync(url);
+
+    private async Task OpenNewTabAsync(string? url)
     {
         await EnsureEnvironmentAsync();
         var tab = CreateWebTab();
@@ -422,8 +428,8 @@ public partial class MainWindow : Window
     private Point _dragStartPos;
     private bool _isDragging;
 
-    /// <summary>按标签数量与可用宽度计算每个标签的宽度和尺寸模式。</summary>
-    private void UpdateTabWidths()
+    /// <summary>按标签数量与可用宽度计算每个标签的宽度和尺寸模式（增减标签时带宽度动画）。</summary>
+    private void UpdateTabWidths(bool animate = false)
     {
         int n = Tabs.Count;
         if (n == 0 || TabScroll.ViewportWidth <= 0) return;
@@ -437,9 +443,41 @@ public partial class MainWindow : Window
 
         foreach (var tab in Tabs)
         {
-            tab.TabWidthMode = mode;
-            tab.TabWidth = w;
+            tab.TabWidthMode = tab.Pinned ? TabSizingMode.Icon : mode;
+            double target = tab.Pinned ? MinTabWidth : w;
+            double old = tab.TabWidth;
+            tab.TabWidth = target;
+
+            if (animate && Math.Abs(old - target) > 0.5 && GetTabButton(tab) is { } btn)
+            {
+                var animation = new DoubleAnimation(old, target, TimeSpan.FromMilliseconds(180))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+                    FillBehavior = FillBehavior.Stop,
+                };
+                btn.BeginAnimation(FrameworkElement.WidthProperty, animation);
+            }
         }
+    }
+
+    /// <summary>取标签对应的可视化按钮（ContentPresenter 内的 Button）。</summary>
+    private Button? GetTabButton(BrowserTab tab)
+    {
+        if (TabsList.ItemContainerGenerator.ContainerFromItem(tab) is not ContentPresenter presenter) return null;
+        return FindVisualChild<Button>(presenter);
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject root) where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T found) return found;
+            var result = FindVisualChild<T>(child);
+            if (result is not null) return result;
+        }
+        return null;
     }
 
     private void TabButton_MouseDown(object sender, MouseButtonEventArgs e)
@@ -501,6 +539,104 @@ public partial class MainWindow : Window
         {
             _isDragging = false;
             if (TabScroll.IsMouseCaptured) TabScroll.ReleaseMouseCapture();
+        }
+    }
+
+    // ==================== 标签页右键菜单 ====================
+
+    private void TabContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: BrowserTab tab } || tab.WebView is null) return;
+        if (sender is not FrameworkElement { ContextMenu: ContextMenu menu }) return;
+
+        foreach (var item in menu.Items.OfType<MenuItem>())
+        {
+            switch (item.Tag as string)
+            {
+                case "pin":
+                    item.Header = tab.Pinned ? "取消固定标签页" : "固定标签页";
+                    break;
+                case "mute":
+                    var core = tab.WebView.CoreWebView2;
+                    item.Header = core is { IsMuted: true } ? "取消静音标签页" : "静音标签页";
+                    break;
+                case "others":
+                    item.IsEnabled = Tabs.Count > 1;
+                    break;
+                case "right":
+                    item.IsEnabled = Tabs.IndexOf(tab) < Tabs.Count - 1;
+                    break;
+            }
+        }
+    }
+
+    private void MenuReload_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab { IsWebViewReady: true } tab) tab.Reload();
+    }
+
+    private void MenuCopyUrl_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab tab)
+        {
+            try { Clipboard.SetText(tab.CurrentUrl); } catch { /* 剪贴板被占用时忽略 */ }
+        }
+    }
+
+    private void MenuMute_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab tab)
+        {
+            var core = tab.WebView?.CoreWebView2;
+            if (core is not null) core.IsMuted = !core.IsMuted;
+        }
+    }
+
+    private void MenuDuplicate_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab tab && tab.CurrentUrl.Length > 0)
+        {
+            _ = OpenNewTabAsync(tab.CurrentUrl);
+        }
+    }
+
+    private void MenuPin_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab tab)
+        {
+            tab.Pinned = !tab.Pinned;
+            UpdateTabWidths(animate: true);
+        }
+    }
+
+    private void MenuCloseOthers_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not BrowserTab keep) return;
+        foreach (var tab in Tabs.ToList())
+        {
+            if (tab != keep) OnTabCloseRequested(tab, EventArgs.Empty);
+        }
+    }
+
+    private void MenuCloseRight_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not BrowserTab tab) return;
+        int index = Tabs.IndexOf(tab);
+        for (int i = Tabs.Count - 1; i > index; i--)
+        {
+            OnTabCloseRequested(Tabs[i], EventArgs.Empty);
+        }
+    }
+
+    private void MenuCloseDuplicates_Click(object sender, RoutedEventArgs e)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tab in Tabs.ToList())
+        {
+            if (!seen.Add(tab.CurrentUrl))
+            {
+                OnTabCloseRequested(tab, EventArgs.Empty);
+            }
         }
     }
 

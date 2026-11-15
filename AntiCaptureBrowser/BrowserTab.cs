@@ -63,6 +63,9 @@ public class BrowserTab : INotifyPropertyChanged
         set { if (_tabWidthMode != value) { _tabWidthMode = value; OnPropertyChanged(); } }
     }
 
+    /// <summary>固定（Pin）：始终仅图标模式、固定最小宽度。</summary>
+    public bool Pinned { get; set; }
+
     public string CurrentUrl => WebView?.CoreWebView2?.Source ?? WebView?.Source?.ToString() ?? "";
 
     // 由 MainWindow 订阅的交互请求

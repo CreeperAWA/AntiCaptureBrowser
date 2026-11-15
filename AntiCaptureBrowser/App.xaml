@@ -68,5 +68,60 @@
             <Setter Property="Template" Value="{StaticResource SlimScrollBarTemplate}" />
         </Style>
         <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBar}" />
+
+        <!-- ===== 右键菜单（深色） ===== -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{DynamicResource PopupBgBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="8" Padding="5,6" Margin="0,4,8,8">
+                            <StackPanel IsItemsHost="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="5" Padding="12,7" Margin="2,1">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}"
+                                           FontSize="12" Margin="24,0,0,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource ForegroundDimBrush}" />
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                                  RecognizesAccessKey="False" />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource ForegroundDimBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Separator">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Height="1" Background="{TemplateBinding Background}"
+                                Margin="8,4" Opacity="0.8" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>

@@ -145,17 +145,17 @@
                                             <Border x:Name="bd" CornerRadius="7,7,0,0" Padding="10,0,4,0">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock x:Name="TitleText" Text="{Binding Title}"
+                                                    <TextBlock x:Name="IconGlyph" Text="&#xE774;"
+                                                               FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                                               Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock x:Name="TitleText" Grid.Column="1" Text="{Binding Title}"
                                                                VerticalAlignment="Center" HorizontalAlignment="Left"
                                                                TextTrimming="CharacterEllipsis" FontSize="12" />
-                                                    <TextBlock x:Name="IconGlyph" Grid.Column="0" Text="&#xE774;"
-                                                               FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                               Visibility="Collapsed" />
-                                                    <Button x:Name="CloseBtn" Grid.Column="1" Width="20" Height="20"
+                                                    <Button x:Name="CloseBtn" Grid.Column="2" Width="20" Height="20"
                                                             Margin="6,0,0,0" Content="&#xE711;" FontSize="9"
                                                             Style="{StaticResource IconButton}" Visibility="Collapsed"
                                                             Click="TabClose_Click" ToolTip="关闭标签页 (Ctrl+W)" />
@@ -180,10 +180,9 @@
                                                 <Trigger SourceName="bd" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Visibility" Value="Visible" />
                                                 </Trigger>
-                                                <!-- 图标模式：标题隐藏、显示图标；悬停时图标临时替换为关闭按钮 -->
+                                                <!-- 图标模式：标题隐藏；悬停时图标临时替换为关闭按钮 -->
                                                 <DataTrigger Binding="{Binding TabWidthMode}" Value="Icon">
                                                     <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed" />
-                                                    <Setter TargetName="IconGlyph" Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
                                                 <MultiDataTrigger>
                                                     <MultiDataTrigger.Conditions>
@@ -198,6 +197,20 @@
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Button.Template>
+                                    <Button.ContextMenu>
+                                        <ContextMenu ContextMenuOpening="TabContextMenuOpening">
+                                            <MenuItem Header="刷新标签页" Click="MenuReload_Click" />
+                                            <MenuItem Header="复制网址" Click="MenuCopyUrl_Click" />
+                                            <MenuItem Header="静音标签页" Tag="mute" Click="MenuMute_Click" />
+                                            <MenuItem Header="克隆标签页" Click="MenuDuplicate_Click" />
+                                            <MenuItem Header="固定标签页" Tag="pin" Click="MenuPin_Click" />
+                                            <Separator />
+                                            <MenuItem Header="关闭标签页" InputGestureText="Ctrl+W" Click="TabClose_Click" />
+                                            <MenuItem Header="关闭其他标签页" Tag="others" Click="MenuCloseOthers_Click" />
+                                            <MenuItem Header="关闭右侧标签页" Tag="right" Click="MenuCloseRight_Click" />
+                                            <MenuItem Header="关闭重复标签页" Click="MenuCloseDuplicates_Click" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
