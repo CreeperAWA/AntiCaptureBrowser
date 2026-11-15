@@ -283,7 +283,7 @@
                 </DockPanel>
             </Border>
 
-            <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto">
+            <controls:SmoothScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto">
                 <StackPanel MaxWidth="800" Margin="34,22,34,36" HorizontalAlignment="Center">
 
                     <!-- ============ 常规 ============ -->
@@ -509,7 +509,7 @@
                                HorizontalAlignment="Center" Margin="0,8,0,0" />
 
                 </StackPanel>
-            </ScrollViewer>
+            </controls:SmoothScrollViewer>
         </DockPanel>
     </Grid>
 </UserControl>
