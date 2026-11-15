@@ -115,13 +115,6 @@
                             Content="&#xE8BB;" ToolTip="关闭" Click="BtnClose_Click" />
                 </StackPanel>
 
-                <!-- 新建标签页按钮 -->
-                <Button DockPanel.Dock="Right" x:Name="BtnNewTab" Style="{StaticResource IconButton}"
-                        Width="30" Height="28" Margin="4,0,8,0" Content="&#xE710;" FontSize="11"
-                        VerticalAlignment="Bottom"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        ToolTip="新建标签页 (Ctrl+T)" Click="BtnNewTab_Click" />
-
                 <!-- 应用标识 -->
                 <Border Width="30" Height="30" CornerRadius="6" Margin="0,0,8,5"
                         VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}">
@@ -129,9 +122,10 @@
                                Foreground="{DynamicResource BadgeFgBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
 
-                <!-- 标签页 -->
+                <!-- 标签页 + 新建标签页按钮（跟随末尾，与标签垂直居中对齐） -->
                 <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                    <ItemsControl x:Name="TabsList" VerticalAlignment="Bottom">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
+                        <ItemsControl x:Name="TabsList" VerticalAlignment="Bottom">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal" />
@@ -177,7 +171,14 @@
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </ItemsControl>
+                        <Button x:Name="BtnNewTab" Style="{StaticResource IconButton}"
+                                Width="28" Height="28" Margin="4,0,4,3"
+                                VerticalAlignment="Bottom"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                                Content="&#xE710;" FontSize="11"
+                                ToolTip="新建标签页 (Ctrl+T)" Click="BtnNewTab_Click" />
+                    </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
