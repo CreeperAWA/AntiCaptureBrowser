@@ -229,33 +229,40 @@ public class BrowserTab : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 停放标签页（Memory Saver）：TrySuspend 释放其内存，页面停止计时器与媒体。
-    /// 激活时自动恢复。已停放或未就绪则忽略。
+    /// 停放标签页（Memory Saver）：TrySuspendAsync 释放其内存，页面停止计时器与媒体。
+    /// 激活时自动 Resume 恢复。已停放或未就绪则忽略。
     /// </summary>
-    public void Park()
+    public async void Park()
     {
         var core = WebView?.CoreWebView2;
         if (IsParked || core is null || !IsWebViewReady) return;
-        if (core.TrySuspend())
+        try
         {
-            IsParked = true;
-            OnPropertyChanged(nameof(IsParked));
+            if (await core.TrySuspendAsync())
+            {
+                IsParked = true;
+                OnPropertyChanged(nameof(IsParked));
+            }
+        }
+        catch
+        {
+            // 停放失败时保持原状
         }
     }
 
     /// <summary>恢复已停放的标签页。</summary>
-    public async Task ResumeAsync()
+    public void Resume()
     {
         if (!IsParked) return;
         IsParked = false;
         OnPropertyChanged(nameof(IsParked));
         try
         {
-            await (WebView?.CoreWebView2?.TryResumeAsync() ?? Task.CompletedTask);
+            WebView?.CoreWebView2?.Resume();
         }
         catch
         {
-            // 恢复失败时标签仍可正常使用（重新激活会话）
+            // 恢复失败时标签仍可正常使用
         }
         LastActiveTime = DateTime.Now;
     }

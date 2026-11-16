@@ -234,7 +234,7 @@ public partial class MainWindow : Window
         TabContent.Content = tab.Host;
         // 选中即激活：若标签已被停放（Memory Saver）则立即恢复
         tab.LastActiveTime = DateTime.Now;
-        if (tab.IsParked) _ = tab.ResumeAsync();
+        if (tab.IsParked) tab.Resume();
         UpdateAddressBar();
         UpdateNavButtons();
         UpdateWindowTitle();
