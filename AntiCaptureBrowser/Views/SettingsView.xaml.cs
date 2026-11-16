@@ -29,6 +29,7 @@ public partial class SettingsView : UserControl
         _sections.Add(("hotkey", "快捷键", "快捷键 热键 隐藏 恢复 全局 hotkey key", PageHotkey));
         _sections.Add(("media", "隐藏与最小化", "隐藏 最小化 静音 暂停 媒体 音视频 声音 mute pause", PageMedia));
         _sections.Add(("ua", "User-Agent", "UA 浏览器标识 user agent 移动版 手机", PageUserAgent));
+        _sections.Add(("defaultbrowser", "默认浏览器", "默认浏览器 default browser 设为", PageDefaultBrowser));
         _sections.Add(("about", "关于", "关于 版本 构建 提交 数据 存储 开源 组件 license data about", PageAbout));
         NavGeneral.IsChecked = true; // 默认进入「常规」分类
         Loaded += (_, _) =>
@@ -97,6 +98,7 @@ public partial class SettingsView : UserControl
                 nameof(NavHotkey) => "hotkey",
                 nameof(NavMedia) => "media",
                 nameof(NavUserAgent) => "ua",
+                nameof(NavDefaultBrowser) => "defaultbrowser",
                 nameof(NavAbout) => "about",
                 _ => _selectedCategory,            };
             ApplyFilter();
@@ -213,6 +215,22 @@ public partial class SettingsView : UserControl
         HotkeyStatusText.Foreground = ok
             ? FindResource("SuccessBrush") as System.Windows.Media.Brush
             : System.Windows.Media.Brushes.OrangeRed;
+    }
+
+    private void SetDefaultBrowser_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Services.DefaultBrowserService.RegisterAsBrowser();
+            Services.DefaultBrowserService.OpenDefaultAppsSettings();
+            DefaultBrowserStatus.Text = "✓ 注册完成，请在打开的「默认应用」设置页中选择 AntiCaptureBrowser";
+            DefaultBrowserStatus.Foreground = FindResource("SuccessBrush") as System.Windows.Media.Brush;
+        }
+        catch (Exception ex)
+        {
+            DefaultBrowserStatus.Text = "⚠ 注册失败：" + ex.Message;
+            DefaultBrowserStatus.Foreground = System.Windows.Media.Brushes.OrangeRed;
+        }
     }
 
     private void FlashSaved()
