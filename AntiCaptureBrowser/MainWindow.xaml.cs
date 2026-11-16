@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private readonly HotkeyService _hotkeyService = new();
     private readonly AppKeyboardHook _keyboardHook = new();
     private readonly WindowAffinityWatcher _affinityWatcher = new();
+    private System.Windows.Forms.NotifyIcon? _trayIcon;
+    private bool _forceClose;
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
 
@@ -33,12 +35,22 @@ public partial class MainWindow : Window
         InitializeComponent();
         TabsList.ItemsSource = Tabs;
         StateChanged += OnStateChanged;
-        Closing += (_, _) =>
+        Closing += (s, e) =>
         {
+            // 关闭到托盘：取消本次关闭并隐藏窗口
+            if (!_forceClose && App.Settings.CloseToTray)
+            {
+                e.Cancel = true;
+                Hide();
+                UpdateTrayVisibility();
+                return;
+            }
+
             SaveWindowBounds();
             _hotkeyService.Dispose();
             _keyboardHook.Dispose();
             _affinityWatcher.Dispose();
+            _trayIcon?.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
         };
         Loaded += async (_, _) => await OpenHomeTabAsync();
@@ -68,12 +80,74 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         RestoreWindowBounds();
+        InitTrayIcon();
+        ApplyTraySettings();
         ApplyCaptureMode();
         RegisterGlobalHotkey();
         EnableRoundedCorners();
         // 窗口式宿主下网页获得焦点时 WPF 收不到键盘事件，改由低级钩子提供宿主快捷键
         _keyboardHook.ShortcutPressed += OnKeyboardShortcut;
         _keyboardHook.Install(this);
+    }
+
+    // ==================== 托盘图标 ====================
+
+    private void InitTrayIcon()
+    {
+        _trayIcon = new System.Windows.Forms.NotifyIcon
+        {
+            Text = "AntiCaptureBrowser",
+            Visible = false,
+        };
+        UpdateTrayIconImage();
+        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("打开主窗口", null, (_, _) => RestoreFromTray());
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("退出", null, (_, _) =>
+        {
+            _forceClose = true;
+            Close();
+        });
+        _trayIcon.ContextMenuStrip = menu;
+    }
+
+    private void UpdateTrayIconImage()
+    {
+        if (_trayIcon is null) return;
+        var source = Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode, 32);
+        using var stream = new MemoryStream();
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(source));
+        encoder.Save(stream);
+        stream.Position = 0;
+        using var bitmap = new System.Drawing.Bitmap(stream);
+        _trayIcon.Icon = System.Drawing.Icon.FromHandle(bitmap.GetHicon());
+    }
+
+    /// <summary>托盘图标可见性：任务栏图标被关闭，或窗口不可见（隐藏/收进托盘）时显示。</summary>
+    private void UpdateTrayVisibility()
+    {
+        if (_trayIcon is null) return;
+        bool show = !App.Settings.TaskbarIconEnabled || Visibility != Visibility.Visible;
+        _trayIcon.Visible = show;
+    }
+
+    private void ApplyTraySettings()
+    {
+        // ShowInTaskbar 切换会重建窗口句柄，需重新注册热键并重设亲和性
+        ShowInTaskbar = App.Settings.TaskbarIconEnabled;
+        RegisterGlobalHotkey();
+        ApplyCaptureMode();
+        UpdateTrayVisibility();
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        UpdateTrayVisibility();
     }
 
     private void RestoreWindowBounds()
@@ -532,7 +606,7 @@ public partial class MainWindow : Window
 
     private void OnSettingsApplied(object? sender, EventArgs e)
     {
-        ApplyCaptureMode();
+        ApplyTraySettings();
         bool hotkeyOk = RegisterGlobalHotkey();
         if (sender is Views.SettingsView view) view.SetHotkeyStatus(hotkeyOk);
         // User-Agent 对所有标签页的后续导航生效
@@ -611,11 +685,13 @@ public partial class MainWindow : Window
         if (WindowState == WindowState.Minimized)
         {
             if (App.Settings.MuteOnHide || App.Settings.PauseOnHide) SilenceMedia(true);
+            if (App.Settings.MinimizeToTray) Hide(); // 最小化收进托盘
         }
         else if (!_isHiddenByHotkey)
         {
             SilenceMedia(false);
         }
+        UpdateTrayVisibility();
     }
 
     private void SilenceMedia(bool on)

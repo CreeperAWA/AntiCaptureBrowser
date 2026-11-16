@@ -81,6 +81,16 @@ public class AppSettings
     /// <summary>非活动多久后停放（分钟）。</summary>
     public int TabParkingTimeoutMinutes { get; set; } = 30;
 
+    // ===== 任务栏与托盘 =====
+    /// <summary>在任务栏显示窗口图标（关闭后改用托盘图标）。</summary>
+    public bool TaskbarIconEnabled { get; set; } = true;
+
+    /// <summary>最小化时收进托盘。</summary>
+    public bool MinimizeToTray { get; set; } = false;
+
+    /// <summary>点击关闭按钮时收进托盘而非退出。</summary>
+    public bool CloseToTray { get; set; } = false;
+
     // ===== 窗口状态记忆 =====
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
