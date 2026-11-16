@@ -319,21 +319,6 @@ public partial class MainWindow : Window
 
     private void AddressBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter)
-        {
-            e.Handled = true;
-            NavigateFromAddress(AddressBox.Text);
-        }
-        else if (e.Key == Key.Escape)
-        {
-            e.Handled = true;
-            UpdateAddressBar();
-            _selectedTab?.FocusContent();
-        }
-    }
-
-    private void AddressBox_KeyDown(object sender, KeyEventArgs e)
-    {
         if (SuggestPopup.IsOpen && e.Key == Key.Down)
         {
             e.Handled = true;
