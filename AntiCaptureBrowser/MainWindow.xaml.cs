@@ -29,6 +29,14 @@ public partial class MainWindow : Window
     private bool _forceClose;
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
+    private readonly string _randomTitle = GenerateRandomTitle();
+
+    /// <summary>随机窗口标题：10 个字符，含小写字母与数字（隐私场景下不暴露浏览器身份）。</summary>
+    private static string GenerateRandomTitle()
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        return new string(Enumerable.Range(0, 10).Select(_ => chars[Random.Shared.Next(chars.Length)]).ToArray());
+    }
 
     public MainWindow()
     {
@@ -347,9 +355,12 @@ public partial class MainWindow : Window
 
     private void UpdateWindowTitle()
     {
-        Title = _selectedTab is null
-            ? "AntiCaptureBrowser"
-            : $"{_selectedTab.Title} - AntiCaptureBrowser";
+        Title = App.Settings.WindowTitleMode switch
+        {
+            "generic" => "AntiCaptureBrowser",
+            "random" => _randomTitle,
+            _ => _selectedTab is null ? "AntiCaptureBrowser" : $"{_selectedTab.Title} - AntiCaptureBrowser",
+        };
     }
 
     // ==================== 地址栏与导航 ====================
@@ -631,6 +642,7 @@ public partial class MainWindow : Window
         ApplyTraySettings();
         bool hotkeyOk = RegisterGlobalHotkey();
         if (sender is Views.SettingsView view) view.SetHotkeyStatus(hotkeyOk);
+        UpdateWindowTitle();
         // User-Agent 对所有标签页的后续导航生效
         foreach (var tab in Tabs)
         {

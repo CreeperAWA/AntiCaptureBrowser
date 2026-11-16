@@ -91,6 +91,10 @@ public class AppSettings
     /// <summary>点击关闭按钮时收进托盘而非退出。</summary>
     public bool CloseToTray { get; set; } = false;
 
+    // ===== 窗口标题 =====
+    /// <summary>标题模式：tabs（显示标签页标题）/ generic（固定名）/ random（随机 10 位小写字母与数字）。</summary>
+    public string WindowTitleMode { get; set; } = "tabs";
+
     // ===== 窗口状态记忆 =====
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }

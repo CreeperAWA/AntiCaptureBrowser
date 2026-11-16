@@ -168,6 +168,12 @@ public partial class SettingsView : UserControl
             TaskbarIconCheck.IsChecked = s.TaskbarIconEnabled;
             MinimizeToTrayCheck.IsChecked = s.MinimizeToTray;
             CloseToTrayCheck.IsChecked = s.CloseToTray;
+            WindowTitleCombo.SelectedIndex = s.WindowTitleMode switch
+            {
+                "generic" => 1,
+                "random" => 2,
+                _ => 0,
+            };
             UserAgentCombo.SelectedIndex = s.UserAgentOption switch
             {
                 "default" => 0,
@@ -214,6 +220,7 @@ public partial class SettingsView : UserControl
         s.TaskbarIconEnabled = TaskbarIconCheck.IsChecked == true;
         s.MinimizeToTray = MinimizeToTrayCheck.IsChecked == true;
         s.CloseToTray = CloseToTrayCheck.IsChecked == true;
+        s.WindowTitleMode = ((ComboBoxItem)WindowTitleCombo.SelectedItem)?.Tag as string ?? "tabs";
         s.UserAgentOption = ((ComboBoxItem)UserAgentCombo.SelectedItem)?.Tag as string ?? "default";
         s.CustomUserAgent = CustomUserAgentBox.Text.Trim();
 
