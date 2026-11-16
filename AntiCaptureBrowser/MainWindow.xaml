@@ -276,6 +276,7 @@
                              Foreground="{DynamicResource ForegroundBrush}"
                              CaretBrush="{DynamicResource ForegroundBrush}"
                              FontSize="13" MinWidth="200"
+                             PreviewMouseLeftButtonDown="AddressBox_PreviewMouseDown"
                              KeyDown="AddressBox_KeyDown"
                              GotKeyboardFocus="AddressBox_GotKeyboardFocus" />
                 </Border>

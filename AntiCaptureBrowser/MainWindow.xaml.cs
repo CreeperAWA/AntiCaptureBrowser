@@ -333,6 +333,17 @@ public partial class MainWindow : Window
     private void AddressBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         => AddressBox.SelectAll();
 
+    // Chrome 行为：点击未聚焦的地址栏时全选整个 URL（再次点击则定位光标）
+    private void AddressBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!AddressBox.IsKeyboardFocusWithin)
+        {
+            e.Handled = true;
+            AddressBox.Focus();
+            AddressBox.SelectAll();
+        }
+    }
+
     // ==================== 工具栏按钮 ====================
 
     private void BtnNewTab_Click(object sender, RoutedEventArgs e) => OnTabNewTabRequested(this, null);
