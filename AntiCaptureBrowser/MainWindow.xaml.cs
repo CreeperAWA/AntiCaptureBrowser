@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         StateChanged += OnStateChanged;
         Closing += (_, _) =>
         {
+            SaveWindowBounds();
             _hotkeyService.Dispose();
             _keyboardHook.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
@@ -62,12 +63,44 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+        RestoreWindowBounds();
         ApplyCaptureMode();
         RegisterGlobalHotkey();
         EnableRoundedCorners();
         // 窗口式宿主下网页获得焦点时 WPF 收不到键盘事件，改由低级钩子提供宿主快捷键
         _keyboardHook.ShortcutPressed += OnKeyboardShortcut;
         _keyboardHook.Install(this);
+    }
+
+    private void RestoreWindowBounds()
+    {
+        var s = App.Settings;
+        if (s.WindowWidth is not double w || s.WindowHeight is not double h
+            || s.WindowLeft is not double l || s.WindowTop is not double t) return;
+
+        // 虚拟屏幕范围校验：换显示器/拔掉副屏后窗口不至于丢失在屏幕外
+        double vLeft = SystemParameters.VirtualScreenLeft, vTop = SystemParameters.VirtualScreenTop;
+        double vRight = vLeft + SystemParameters.VirtualScreenWidth;
+        double vBottom = vTop + SystemParameters.VirtualScreenHeight;
+        if (l + w < vLeft + 40 || l > vRight - 40 || t + h < vTop + 40 || t > vBottom - 40) return;
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = l;
+        Top = t;
+        Width = w;
+        Height = h;
+        if (s.WindowState == "Maximized") WindowState = WindowState.Maximized;
+    }
+
+    private void SaveWindowBounds()
+    {
+        var s = App.Settings;
+        var bounds = WindowState == WindowState.Maximized ? RestoreBounds : new Rect(Left, Top, Width, Height);
+        s.WindowLeft = bounds.Left;
+        s.WindowTop = bounds.Top;
+        s.WindowWidth = bounds.Width;
+        s.WindowHeight = bounds.Height;
+        s.WindowState = WindowState == WindowState.Maximized ? "Maximized" : "Normal";
     }
 
     private void OnKeyboardShortcut(string action)

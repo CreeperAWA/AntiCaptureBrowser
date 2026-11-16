@@ -73,4 +73,11 @@ public class AppSettings
 
     /// <summary>隐藏/最小化时暂停页面中的音视频。</summary>
     public bool PauseOnHide { get; set; } = false;
+
+    // ===== 窗口状态记忆 =====
+    public double? WindowLeft { get; set; }
+    public double? WindowTop { get; set; }
+    public double? WindowWidth { get; set; }
+    public double? WindowHeight { get; set; }
+    public string WindowState { get; set; } = "Normal";
 }
