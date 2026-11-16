@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using AntiCaptureBrowser.Models;
 using AntiCaptureBrowser.Services;
@@ -25,7 +26,6 @@ public partial class MainWindow : Window
     private readonly HotkeyService _hotkeyService = new();
     private readonly AppKeyboardHook _keyboardHook = new();
     private readonly WindowAffinityWatcher _affinityWatcher = new();
-    private System.Windows.Forms.NotifyIcon? _trayIcon;
     private bool _forceClose;
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
@@ -50,7 +50,6 @@ public partial class MainWindow : Window
             _hotkeyService.Dispose();
             _keyboardHook.Dispose();
             _affinityWatcher.Dispose();
-            _trayIcon?.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
         };
         Loaded += async (_, _) => await OpenHomeTabAsync();
@@ -90,47 +89,50 @@ public partial class MainWindow : Window
         _keyboardHook.Install(this);
     }
 
-    // ==================== 托盘图标 ====================
+    // ==================== 托盘图标（Shell_NotifyIcon + WPF 菜单） ====================
+
+    private readonly Services.TrayIconService _trayService = new();
+    private bool _trayVisible;
 
     private void InitTrayIcon()
     {
-        _trayIcon = new System.Windows.Forms.NotifyIcon
-        {
-            Text = "AntiCaptureBrowser",
-            Visible = false,
-        };
-        UpdateTrayIconImage();
-        _trayIcon.DoubleClick += (_, _) => RestoreFromTray();
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("打开主窗口", null, (_, _) => RestoreFromTray());
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) =>
-        {
-            _forceClose = true;
-            Close();
-        });
-        _trayIcon.ContextMenuStrip = menu;
+        _trayService.Activated += RestoreFromTray;
+        _trayService.MenuRequested += ShowTrayMenu;
+        var source = (HwndSource?)PresentationSource.FromVisual(this);
+        source?.AddHook(TrayWindowProc);
     }
 
-    private void UpdateTrayIconImage()
+    private IntPtr TrayWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (_trayIcon is null) return;
-        var source = Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode, 32);
-        using var stream = new MemoryStream();
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(source));
-        encoder.Save(stream);
-        stream.Position = 0;
-        using var bitmap = new System.Drawing.Bitmap(stream);
-        _trayIcon.Icon = System.Drawing.Icon.FromHandle(bitmap.GetHicon());
+        if (_trayService.HandleCallback(msg, lParam)) handled = true;
+        return IntPtr.Zero;
     }
 
     /// <summary>托盘图标可见性：任务栏图标被关闭，或窗口不可见（隐藏/收进托盘）时显示。</summary>
     private void UpdateTrayVisibility()
     {
-        if (_trayIcon is null) return;
-        bool show = !App.Settings.TaskbarIconEnabled || Visibility != Visibility.Visible;
-        _trayIcon.Visible = show;
+        _trayVisible = !App.Settings.TaskbarIconEnabled || Visibility != Visibility.Visible;
+        if (_trayVisible)
+        {
+            _trayService.Show(
+                new WindowInteropHelper(this).EnsureHandle(),
+                (BitmapSource)Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode, 32),
+                "AntiCaptureBrowser");
+        }
+        else
+        {
+            _trayService.Hide();
+        }
+    }
+
+    private void UpdateTrayIconImage()
+    {
+        if (_trayVisible)
+        {
+            _trayService.Update(
+                (BitmapSource)Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode, 32),
+                "AntiCaptureBrowser");
+        }
     }
 
     private void ApplyTraySettings()
@@ -140,6 +142,26 @@ public partial class MainWindow : Window
         RegisterGlobalHotkey();
         ApplyCaptureMode();
         UpdateTrayVisibility();
+    }
+
+    private void ShowTrayMenu()
+    {
+        // 托盘菜单需要窗口短暂前台化，否则菜单无法交互
+        Activate();
+        var menu = new ContextMenu();
+        var openItem = new MenuItem { Header = "打开主窗口" };
+        openItem.Click += (_, _) => RestoreFromTray();
+        menu.Items.Add(openItem);
+        menu.Items.Add(new Separator());
+        var exitItem = new MenuItem { Header = "退出" };
+        exitItem.Click += (_, _) =>
+        {
+            _forceClose = true;
+            Close();
+        };
+        menu.Items.Add(exitItem);
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
     }
 
     private void RestoreFromTray()
@@ -624,6 +646,7 @@ public partial class MainWindow : Window
         DisplayAffinity.Apply(hwnd, App.Settings.CaptureMode);
         // 任务栏/窗口图标随捕获模式切换
         Icon = Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode);
+        UpdateTrayIconImage();
         // DevTools / 独立下载窗口等附属窗口不会自动继承主窗口的亲和性，由监视器覆盖
         if (App.Settings.CaptureMode == Models.CaptureMode.Capturable)
         {

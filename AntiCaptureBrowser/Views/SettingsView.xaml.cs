@@ -28,6 +28,7 @@ public partial class SettingsView : UserControl
         _sections.Add(("privacy", "隐私与捕获保护", "隐私 捕获 截图 录屏 屏幕共享 防捕获 透明 黑色 displayaffinity capture", PagePrivacy));
         _sections.Add(("hotkey", "快捷键", "快捷键 热键 隐藏 恢复 全局 hotkey key", PageHotkey));
         _sections.Add(("media", "隐藏与最小化", "隐藏 最小化 静音 暂停 媒体 音视频 声音 mute pause", PageMedia));
+        _sections.Add(("windowtray", "窗口与托盘", "窗口 托盘 任务栏 标题 tray taskbar", PageWindowTray));
         _sections.Add(("parking", "标签页停放", "停放 内存 节省 休眠 memory saver 挂起 后台", PageParking));
         _sections.Add(("ua", "User-Agent", "UA 浏览器标识 user agent 移动版 手机", PageUserAgent));
         _sections.Add(("defaultbrowser", "默认浏览器", "默认浏览器 default browser 设为", PageDefaultBrowser));
@@ -98,6 +99,7 @@ public partial class SettingsView : UserControl
                 nameof(NavPrivacy) => "privacy",
                 nameof(NavHotkey) => "hotkey",
                 nameof(NavMedia) => "media",
+                nameof(NavTray) => "windowtray",
                 nameof(NavParking) => "parking",
                 nameof(NavUserAgent) => "ua",
                 nameof(NavDefaultBrowser) => "defaultbrowser",
@@ -163,6 +165,9 @@ public partial class SettingsView : UserControl
                 <= 60 => 2,
                 _ => 3,
             };
+            TaskbarIconCheck.IsChecked = s.TaskbarIconEnabled;
+            MinimizeToTrayCheck.IsChecked = s.MinimizeToTray;
+            CloseToTrayCheck.IsChecked = s.CloseToTray;
             UserAgentCombo.SelectedIndex = s.UserAgentOption switch
             {
                 "default" => 0,
@@ -206,6 +211,9 @@ public partial class SettingsView : UserControl
             2 => 60,
             _ => 120,
         };
+        s.TaskbarIconEnabled = TaskbarIconCheck.IsChecked == true;
+        s.MinimizeToTray = MinimizeToTrayCheck.IsChecked == true;
+        s.CloseToTray = CloseToTrayCheck.IsChecked == true;
         s.UserAgentOption = ((ComboBoxItem)UserAgentCombo.SelectedItem)?.Tag as string ?? "default";
         s.CustomUserAgent = CustomUserAgentBox.Text.Trim();
 

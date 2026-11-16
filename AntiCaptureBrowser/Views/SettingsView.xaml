@@ -315,6 +315,8 @@
                                  Tag="&#xE765;" Content="快捷键" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavMedia" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
                                  Tag="&#xE769;" Content="隐藏与最小化" Checked="Nav_Checked" />
+                    <RadioButton x:Name="NavTray" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
+                                 Tag="&#xE7F4;" Content="窗口与托盘" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavParking" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
                                  Tag="&#xE9D2;" Content="标签页停放" Checked="Nav_Checked" />
                 </StackPanel>
@@ -632,6 +634,40 @@
                                     </ComboBox>
                                     <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
                                                Text="固定（Pin）的标签页与当前激活的标签页不会被停放。被停放的标签页激活时会自动恢复。" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ============ 窗口与托盘 ============ -->
+                    <Grid x:Name="PageWindowTray">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource PageIcon}">
+                                    <TextBlock Style="{StaticResource PageGlyph}" Text="&#xE7F4;" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,2,0,0">
+                                    <TextBlock Style="{StaticResource PageTitle}" Text="窗口与托盘" />
+                                    <TextBlock Style="{StaticResource PageDesc}" Text="任务栏图标、托盘与窗口标题" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox x:Name="TaskbarIconCheck" Style="{StaticResource DarkCheck}"
+                                              Content="在任务栏显示窗口图标（关闭后改用托盘图标）"
+                                              Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+                                    <CheckBox x:Name="MinimizeToTrayCheck" Style="{StaticResource DarkCheck}"
+                                              Content="最小化时收进托盘" Margin="0,14,0,0"
+                                              Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+                                    <CheckBox x:Name="CloseToTrayCheck" Style="{StaticResource DarkCheck}"
+                                              Content="点击关闭按钮时收进托盘（可从托盘菜单真正退出）" Margin="0,14,0,0"
+                                              Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
+                                               Text="隐藏窗口（快捷键）时托盘图标始终可用，双击或右键菜单可恢复窗口。" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
