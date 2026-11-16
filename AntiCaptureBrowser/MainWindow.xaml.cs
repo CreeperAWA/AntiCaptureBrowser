@@ -60,7 +60,12 @@ public partial class MainWindow : Window
             _affinityWatcher.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
         };
-        Loaded += async (_, _) => await OpenHomeTabAsync();
+        Loaded += async (_, _) =>
+        {
+            await OpenHomeTabAsync();
+            // 启动后焦点置于网页内容而非地址栏（低优先级延迟执行，避开窗口激活的焦点分配）
+            Dispatcher.InvokeAsync(() => _selectedTab?.FocusContent(), DispatcherPriority.Background);
+        };
         // 系统主题切换时同步所有已打开标签页的配色
         ThemeManager.ThemeChanged += ApplyThemeToTabs;
         // 标签页数量或窗口尺寸变化时重算宽度
