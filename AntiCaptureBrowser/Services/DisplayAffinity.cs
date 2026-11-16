@@ -29,4 +29,8 @@ public static class DisplayAffinity
         };
         return SetWindowDisplayAffinity(hwnd, affinity);
     }
+
+    /// <summary>以底层亲和度值直接应用（供附属窗口清理恢复使用）。</summary>
+    public static bool ApplyRaw(IntPtr hwnd, uint affinity)
+        => hwnd != IntPtr.Zero && SetWindowDisplayAffinity(hwnd, affinity);
 }

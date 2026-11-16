@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private CoreWebView2Environment? _environment;
     private readonly HotkeyService _hotkeyService = new();
     private readonly AppKeyboardHook _keyboardHook = new();
+    private readonly WindowAffinityWatcher _affinityWatcher = new();
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
 
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
             SaveWindowBounds();
             _hotkeyService.Dispose();
             _keyboardHook.Dispose();
+            _affinityWatcher.Dispose();
             ThemeManager.ThemeChanged -= ApplyThemeToTabs;
         };
         Loaded += async (_, _) => await OpenHomeTabAsync();
@@ -555,6 +557,15 @@ public partial class MainWindow : Window
     {
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         DisplayAffinity.Apply(hwnd, App.Settings.CaptureMode);
+        // DevTools / 独立下载窗口等附属窗口不会自动继承主窗口的亲和性，由监视器覆盖
+        if (App.Settings.CaptureMode == CaptureMode.Capturable)
+        {
+            _affinityWatcher.Stop();
+        }
+        else
+        {
+            _affinityWatcher.Start(hwnd);
+        }
     }
 
     // ==================== 全局热键（隐藏/恢复） ====================
