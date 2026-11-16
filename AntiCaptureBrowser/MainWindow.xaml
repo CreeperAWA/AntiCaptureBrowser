@@ -115,12 +115,9 @@
                             Content="&#xE8BB;" ToolTip="关闭" Click="BtnClose_Click" />
                 </StackPanel>
 
-                <!-- 应用标识 -->
-                <Border Width="30" Height="30" CornerRadius="6" Margin="0,0,8,5"
-                        VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}">
-                    <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                               Foreground="{DynamicResource BadgeFgBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Border>
+                <!-- 应用标识：随捕获保护模式切换 -->
+                <Image x:Name="TitleBarLogo" Width="30" Height="30" Margin="0,0,8,5"
+                       VerticalAlignment="Bottom" />
 
                 <!-- 标签页 + 新建标签页按钮（跟随末尾，与标签垂直居中对齐） -->
                 <ScrollViewer x:Name="TabScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"

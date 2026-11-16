@@ -656,8 +656,10 @@ public partial class MainWindow : Window
     {
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         DisplayAffinity.Apply(hwnd, App.Settings.CaptureMode);
-        // 任务栏/窗口图标随捕获模式切换
-        Icon = Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode);
+        // 窗口/任务栏图标与标题栏 Logo 随捕获模式切换
+        var modeIcon = Services.AppIconFactory.GetModeIcon(App.Settings.CaptureMode, 30);
+        Icon = modeIcon;
+        TitleBarLogo.Source = modeIcon;
         UpdateTrayIconImage();
         // DevTools / 独立下载窗口等附属窗口不会自动继承主窗口的亲和性，由监视器覆盖
         if (App.Settings.CaptureMode == Models.CaptureMode.Capturable)
