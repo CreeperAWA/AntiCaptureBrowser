@@ -47,6 +47,7 @@ public partial class MainWindow : Window
             e.Action is NotifyCollectionChangedAction.Add or NotifyCollectionChangedAction.Remove
                 or NotifyCollectionChangedAction.Reset);
         TabScroll.SizeChanged += (_, _) => UpdateTabWidths();
+        _suggestTimer.Tick += (_, _) => { _suggestTimer.Stop(); _ = FetchSuggestionsAsync(); };
     }
 
     private void ApplyThemeToTabs()
@@ -329,6 +330,122 @@ public partial class MainWindow : Window
             UpdateAddressBar();
             _selectedTab?.FocusContent();
         }
+    }
+
+    private void AddressBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (SuggestPopup.IsOpen && e.Key == Key.Down)
+        {
+            e.Handled = true;
+            MoveSuggestSelection(1);
+            return;
+        }
+        if (SuggestPopup.IsOpen && e.Key == Key.Up)
+        {
+            e.Handled = true;
+            MoveSuggestSelection(-1);
+            return;
+        }
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            string target = SuggestPopup.IsOpen && SuggestList.SelectedItem is string selected
+                ? selected
+                : AddressBox.Text;
+            HideSuggest();
+            NavigateFromAddress(target);
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            HideSuggest();
+            UpdateAddressBar();
+            _selectedTab?.FocusContent();
+        }
+    }
+
+    private void MoveSuggestSelection(int delta)
+    {
+        int count = SuggestList.Items.Count;
+        if (count == 0) return;
+        int index = SuggestList.SelectedIndex + delta;
+        if (index < -1) index = count - 1;
+        if (index >= count) index = -1;
+        SuggestList.SelectedIndex = index;
+        if (SuggestList.SelectedItem is not null)
+        {
+            SuggestList.ScrollIntoView(SuggestList.SelectedItem);
+        }
+    }
+
+    private void SuggestList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (SuggestList.SelectedItem is string suggestion)
+        {
+            _suppressSuggest = true;
+            AddressBox.Text = suggestion;
+            AddressBox.CaretIndex = suggestion.Length;
+            _suppressSuggest = false;
+        }
+    }
+
+    private void SuggestList_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (SuggestList.SelectedItem is string suggestion)
+        {
+            HideSuggest();
+            NavigateFromAddress(suggestion);
+        }
+    }
+
+    // ==================== 搜索联想 ====================
+
+    private readonly DispatcherTimer _suggestTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private int _suggestSeq;
+    private bool _suppressSuggest;
+
+    private void AddressBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_suppressSuggest) return;
+        _suggestTimer.Stop();
+        if (string.IsNullOrWhiteSpace(AddressBox.Text))
+        {
+            HideSuggest();
+            return;
+        }
+        _suggestTimer.Start();
+    }
+
+    private async Task FetchSuggestionsAsync()
+    {
+        int seq = ++_suggestSeq;
+        string text = AddressBox.Text.Trim();
+        string engine = App.Settings.SearchEngineId;
+        if (text.Length == 0 || engine == "custom")
+        {
+            HideSuggest();
+            return;
+        }
+
+        var items = await SuggestionService.GetSuggestionsAsync(engine, text);
+        if (seq != _suggestSeq || _isDragging) return; // 过期响应或正在拖动标签
+        if (items.Length == 0)
+        {
+            HideSuggest();
+            return;
+        }
+
+        SuggestList.ItemsSource = items;
+        SuggestList.SelectedIndex = -1;
+        SuggestPopup.IsOpen = true;
+    }
+
+    private void HideSuggest()
+    {
+        _suggestSeq++;
+        _suggestTimer.Stop();
+        SuggestPopup.IsOpen = false;
+        SuggestList.ItemsSource = null;
     }
 
     private void AddressBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
