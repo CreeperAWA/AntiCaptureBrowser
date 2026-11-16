@@ -327,8 +327,6 @@
                 </ListBox>
             </Border>
         </Popup>
-            </DockPanel>
-        </Border>
 
         <!-- ============ 标签页内容 ============ -->
         <Grid Grid.Row="2" Background="{DynamicResource ChromeBgBrush}">
