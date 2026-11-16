@@ -157,15 +157,6 @@ public partial class MainWindow : Window
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
-    protected override void OnStateChanged(EventArgs e)
-    {
-        base.OnStateChanged(e);
-        // 最大化/还原时切换按钮图标与提示
-        bool maximized = WindowState == WindowState.Maximized;
-        BtnMaximize.Content = maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
-        ToolTipService.SetToolTip(BtnMaximize, maximized ? "还原" : "最大化");
-    }
-
     private async Task EnsureEnvironmentAsync()
     {
         if (_environment is not null) return;
@@ -610,6 +601,11 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
+        // 无边框窗口最大化时会向四周外扩 ResizeBorderThickness，预留边距避免内容被裁掉
+        RootGrid.Margin = WindowState == WindowState.Maximized ? new Thickness(6, 6, 6, 6) : new Thickness(0);
+        BtnMaximize.Content = WindowState == WindowState.Maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
+        ToolTipService.SetToolTip(BtnMaximize, WindowState == WindowState.Maximized ? "还原" : "最大化");
+
         if (WindowState == WindowState.Minimized)
         {
             if (App.Settings.MuteOnHide || App.Settings.PauseOnHide) SilenceMedia(true);
