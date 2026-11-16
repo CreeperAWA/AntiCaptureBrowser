@@ -558,7 +558,7 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         DisplayAffinity.Apply(hwnd, App.Settings.CaptureMode);
         // DevTools / 独立下载窗口等附属窗口不会自动继承主窗口的亲和性，由监视器覆盖
-        if (App.Settings.CaptureMode == CaptureMode.Capturable)
+        if (App.Settings.CaptureMode == Models.CaptureMode.Capturable)
         {
             _affinityWatcher.Stop();
         }
