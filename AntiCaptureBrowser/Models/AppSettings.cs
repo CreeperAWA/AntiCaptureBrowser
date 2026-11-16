@@ -80,4 +80,23 @@ public class AppSettings
     public double? WindowWidth { get; set; }
     public double? WindowHeight { get; set; }
     public string WindowState { get; set; } = "Normal";
+
+    // ===== User-Agent =====
+    /// <summary>UA 预设：default / win-chrome / win-edge / android / iphone / mac-safari / custom。</summary>
+    public string UserAgentOption { get; set; } = "default";
+
+    public string CustomUserAgent { get; set; } = "";
+
+    /// <summary>解析为实际 UA；null 表示使用 WebView2 默认值。</summary>
+    public string? ResolveUserAgent() => UserAgentOption switch
+    {
+        "default" => null,
+        "win-chrome" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+        "win-edge" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0",
+        "android" => "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36",
+        "iphone" => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+        "mac-safari" => "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+        "custom" => string.IsNullOrWhiteSpace(CustomUserAgent) ? null : CustomUserAgent.Trim(),
+        _ => null,
+    };
 }

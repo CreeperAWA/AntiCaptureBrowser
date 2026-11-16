@@ -538,6 +538,11 @@ public partial class MainWindow : Window
         ApplyCaptureMode();
         bool hotkeyOk = RegisterGlobalHotkey();
         if (sender is Views.SettingsView view) view.SetHotkeyStatus(hotkeyOk);
+        // User-Agent 对所有标签页的后续导航生效
+        foreach (var tab in Tabs)
+        {
+            tab.ApplyUserAgent();
+        }
     }
 
     // ==================== 防捕获（SetWindowDisplayAffinity） ====================

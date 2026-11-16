@@ -28,6 +28,7 @@ public partial class SettingsView : UserControl
         _sections.Add(("privacy", "隐私与捕获保护", "隐私 捕获 截图 录屏 屏幕共享 防捕获 透明 黑色 displayaffinity capture", PagePrivacy));
         _sections.Add(("hotkey", "快捷键", "快捷键 热键 隐藏 恢复 全局 hotkey key", PageHotkey));
         _sections.Add(("media", "隐藏与最小化", "隐藏 最小化 静音 暂停 媒体 音视频 声音 mute pause", PageMedia));
+        _sections.Add(("ua", "User-Agent", "UA 浏览器标识 user agent 移动版 手机", PageUserAgent));
         _sections.Add(("about", "关于", "关于 版本 构建 提交 数据 存储 开源 组件 license data about", PageAbout));
         NavGeneral.IsChecked = true; // 默认进入「常规」分类
         Loaded += (_, _) =>
@@ -95,9 +96,9 @@ public partial class SettingsView : UserControl
                 nameof(NavPrivacy) => "privacy",
                 nameof(NavHotkey) => "hotkey",
                 nameof(NavMedia) => "media",
+                nameof(NavUserAgent) => "ua",
                 nameof(NavAbout) => "about",
-                _ => _selectedCategory,
-            };
+                _ => _selectedCategory,            };
             ApplyFilter();
             ContentScroll?.ScrollToTop();
         }
@@ -150,6 +151,18 @@ public partial class SettingsView : UserControl
             HideHotkeyBox.HotkeyValue = s.HideHotkey;
             MuteOnHideCheck.IsChecked = s.MuteOnHide;
             PauseOnHideCheck.IsChecked = s.PauseOnHide;
+            UserAgentCombo.SelectedIndex = s.UserAgentOption switch
+            {
+                "default" => 0,
+                "win-chrome" => 1,
+                "win-edge" => 2,
+                "android" => 3,
+                "iphone" => 4,
+                "mac-safari" => 5,
+                "custom" => 6,
+                _ => 0,
+            };
+            CustomUserAgentBox.Text = s.CustomUserAgent;
         }
         finally
         {
@@ -173,6 +186,8 @@ public partial class SettingsView : UserControl
         s.HideHotkey = HideHotkeyBox.HotkeyValue;
         s.MuteOnHide = MuteOnHideCheck.IsChecked == true;
         s.PauseOnHide = PauseOnHideCheck.IsChecked == true;
+        s.UserAgentOption = ((ComboBoxItem)UserAgentCombo.SelectedItem)?.Tag as string ?? "default";
+        s.CustomUserAgent = CustomUserAgentBox.Text.Trim();
 
         SettingsService.Save(s);
         FlashSaved();
@@ -186,6 +201,7 @@ public partial class SettingsView : UserControl
         bool homeIsUrl = HomePageModeCombo.SelectedIndex == 0;
         CustomSearchUrlBox.Visibility = isCustom ? Visibility.Visible : Visibility.Collapsed;
         HomePageUrlBox.Visibility = homeIsUrl ? Visibility.Visible : Visibility.Collapsed;
+        CustomUserAgentBox.Visibility = UserAgentCombo.SelectedIndex == 6 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>主窗口注册热键后回调状态。</summary>

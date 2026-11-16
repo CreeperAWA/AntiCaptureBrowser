@@ -162,6 +162,7 @@ public class BrowserTab : INotifyPropertyChanged
         // （已改为窗口式宿主：宿主级快捷键由 AppKeyboardHook 低级钩子统一处理）
 
         core.Settings.AreDefaultContextMenusEnabled = true;
+        ApplyUserAgent();
         // 让网页内容跟随应用主题（prefers-color-scheme）
         core.Profile.PreferredColorScheme = ThemeManager.WebViewColorScheme;
 
@@ -208,6 +209,14 @@ public class BrowserTab : INotifyPropertyChanged
         var core = WebView?.CoreWebView2;
         if (core is null) return;
         core.IsMuted = _wasMutedBeforeSilence;
+    }
+
+    /// <summary>应用设置中的 User-Agent（空字符串即恢复 WebView2 默认）。</summary>
+    public void ApplyUserAgent()
+    {
+        var core = WebView?.CoreWebView2;
+        if (core is null) return;
+        core.Settings.UserAgent = App.Settings.ResolveUserAgent() ?? "";
     }
 
     private async Task LoadFaviconAsync(CoreWebView2 core)
