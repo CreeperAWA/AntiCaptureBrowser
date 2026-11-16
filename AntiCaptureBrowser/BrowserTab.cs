@@ -68,6 +68,9 @@ public class BrowserTab : INotifyPropertyChanged
     /// <summary>固定（Pin）：始终仅图标模式、固定最小宽度。</summary>
     public bool Pinned { get; set; }
 
+    /// <summary>历史记录标签页标识。</summary>
+    public bool IsHistoryTab { get; }
+
     private ImageSource? _iconSource;
     /// <summary>站点图标（favicon），由 WebView2 提供；无图标时模板回退到地球标识。</summary>
     public ImageSource? IconSource
@@ -90,6 +93,7 @@ public class BrowserTab : INotifyPropertyChanged
     public event EventHandler<string?>? NewTabRequested;      // null = 打开主页
     public event EventHandler? CloseRequested;
     public event EventHandler<string>? AddressChanged;
+    public event EventHandler<string>? Navigated;              // 导航完成（含最终 URL）
     public event EventHandler? HistoryChanged;
 
     private const string PauseMediaScript =
@@ -97,14 +101,15 @@ public class BrowserTab : INotifyPropertyChanged
 
     private bool _wasMutedBeforeSilence;
 
-    public BrowserTab(bool isSettingsTab)
+    public BrowserTab(bool isSettingsTab, bool isHistoryTab = false)
     {
         IsSettingsTab = isSettingsTab;
+        IsHistoryTab = isHistoryTab;
         Host = new Grid();
         // 背景交给主窗口 / SettingsView 自身（跟随主题），宿主保持透明
         if (isSettingsTab)
         {
-            Title = "设置";
+            Title = isHistoryTab ? "浏览历史" : "设置";
         }
     }
 
@@ -149,6 +154,7 @@ public class BrowserTab : INotifyPropertyChanged
         core.FaviconChanged += async (_, _) => await LoadFaviconAsync(core);
         core.NavigationCompleted += async (_, _) =>
         {
+            Navigated?.Invoke(this, core.Source);
             await Task.Delay(600);
             if (IconSource is null) await LoadFaviconAsync(core);
         };

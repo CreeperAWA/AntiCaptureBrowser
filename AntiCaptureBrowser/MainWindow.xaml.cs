@@ -193,6 +193,7 @@ public partial class MainWindow : Window
         tab.CloseRequested += OnTabCloseRequested;
         tab.AddressChanged += OnSelectedTabAddressChanged;
         tab.HistoryChanged += OnSelectedTabHistoryChanged;
+        tab.Navigated += OnTabNavigated;
         tab.PropertyChanged += OnTabPropertyChanged;
     }
 
@@ -356,6 +357,26 @@ public partial class MainWindow : Window
 
     private void BtnSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
+    private void BtnHistory_Click(object sender, RoutedEventArgs e) => OpenHistory();
+
+    private void OpenHistory()
+    {
+        var existing = Tabs.FirstOrDefault(t => t.IsHistoryTab);
+        if (existing is not null)
+        {
+            SelectTab(existing);
+            return;
+        }
+
+        var tab = new BrowserTab(isSettingsTab: true, isHistoryTab: true);
+        tab.CloseRequested += OnTabCloseRequested;
+        var view = new Views.HistoryView();
+        view.OpenRequested += (_, url) => _ = OpenNewTabAsync(url);
+        tab.SetSettingsContent(view);
+        Tabs.Add(tab);
+        SelectTab(tab);
+    }
+
     private void TabButton_Click(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is BrowserTab tab) SelectTab(tab);
@@ -373,6 +394,14 @@ public partial class MainWindow : Window
     private void OnSelectedTabHistoryChanged(object? sender, EventArgs e)
     {
         if (ReferenceEquals(sender, _selectedTab)) UpdateNavButtons();
+    }
+
+    private void OnTabNavigated(object? sender, string url)
+    {
+        if (sender is not BrowserTab tab) return;
+        if (url.StartsWith("about:", StringComparison.OrdinalIgnoreCase)
+            || url.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return;
+        HistoryService.Add(url, tab.Title);
     }
 
     private void UpdateNavButtons()
