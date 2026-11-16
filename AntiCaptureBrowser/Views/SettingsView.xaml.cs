@@ -28,6 +28,7 @@ public partial class SettingsView : UserControl
         _sections.Add(("privacy", "隐私与捕获保护", "隐私 捕获 截图 录屏 屏幕共享 防捕获 透明 黑色 displayaffinity capture", PagePrivacy));
         _sections.Add(("hotkey", "快捷键", "快捷键 热键 隐藏 恢复 全局 hotkey key", PageHotkey));
         _sections.Add(("media", "隐藏与最小化", "隐藏 最小化 静音 暂停 媒体 音视频 声音 mute pause", PageMedia));
+        _sections.Add(("parking", "标签页停放", "停放 内存 节省 休眠 memory saver 挂起 后台", PageParking));
         _sections.Add(("ua", "User-Agent", "UA 浏览器标识 user agent 移动版 手机", PageUserAgent));
         _sections.Add(("defaultbrowser", "默认浏览器", "默认浏览器 default browser 设为", PageDefaultBrowser));
         _sections.Add(("about", "关于", "关于 版本 构建 提交 数据 存储 开源 组件 license data about", PageAbout));
@@ -97,6 +98,7 @@ public partial class SettingsView : UserControl
                 nameof(NavPrivacy) => "privacy",
                 nameof(NavHotkey) => "hotkey",
                 nameof(NavMedia) => "media",
+                nameof(NavParking) => "parking",
                 nameof(NavUserAgent) => "ua",
                 nameof(NavDefaultBrowser) => "defaultbrowser",
                 nameof(NavAbout) => "about",
@@ -153,6 +155,14 @@ public partial class SettingsView : UserControl
             HideHotkeyBox.HotkeyValue = s.HideHotkey;
             MuteOnHideCheck.IsChecked = s.MuteOnHide;
             PauseOnHideCheck.IsChecked = s.PauseOnHide;
+            ParkingEnabledCheck.IsChecked = s.TabParkingEnabled;
+            ParkingTimeoutCombo.SelectedIndex = s.TabParkingTimeoutMinutes switch
+            {
+                <= 15 => 0,
+                <= 30 => 1,
+                <= 60 => 2,
+                _ => 3,
+            };
             UserAgentCombo.SelectedIndex = s.UserAgentOption switch
             {
                 "default" => 0,
@@ -188,6 +198,14 @@ public partial class SettingsView : UserControl
         s.HideHotkey = HideHotkeyBox.HotkeyValue;
         s.MuteOnHide = MuteOnHideCheck.IsChecked == true;
         s.PauseOnHide = PauseOnHideCheck.IsChecked == true;
+        s.TabParkingEnabled = ParkingEnabledCheck.IsChecked == true;
+        s.TabParkingTimeoutMinutes = ParkingTimeoutCombo.SelectedIndex switch
+        {
+            0 => 15,
+            1 => 30,
+            2 => 60,
+            _ => 120,
+        };
         s.UserAgentOption = ((ComboBoxItem)UserAgentCombo.SelectedItem)?.Tag as string ?? "default";
         s.CustomUserAgent = CustomUserAgentBox.Text.Trim();
 

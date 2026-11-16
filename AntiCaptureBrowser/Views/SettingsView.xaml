@@ -315,6 +315,8 @@
                                  Tag="&#xE765;" Content="快捷键" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavMedia" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
                                  Tag="&#xE769;" Content="隐藏与最小化" Checked="Nav_Checked" />
+                    <RadioButton x:Name="NavParking" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
+                                 Tag="&#xE9D2;" Content="标签页停放" Checked="Nav_Checked" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -593,6 +595,43 @@
                                     <Button Content="设为默认浏览器" Style="{StaticResource PrimaryButton}"
                                             HorizontalAlignment="Left" Click="SetDefaultBrowser_Click" />
                                     <TextBlock x:Name="DefaultBrowserStatus" Style="{StaticResource Hint}" Margin="0,10,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ============ 标签页停放 ============ -->
+                    <Grid x:Name="PageParking">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource PageIcon}">
+                                    <TextBlock Style="{StaticResource PageGlyph}" Text="&#xE9D2;" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,2,0,0">
+                                    <TextBlock Style="{StaticResource PageTitle}" Text="标签页停放" />
+                                    <TextBlock Style="{StaticResource PageDesc}" Text="自动休眠长时间未使用的后台标签页以节省内存（仿 Chrome Memory Saver）" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <CheckBox x:Name="ParkingEnabledCheck" Style="{StaticResource DarkCheck}"
+                                              Content="自动停放长时间未使用的标签页（激活时自动恢复）"
+                                              Checked="OnSettingChanged" Unchecked="OnSettingChanged" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,0" Text="标签页不活动多久后停放" />
+                                    <ComboBox x:Name="ParkingTimeoutCombo" Style="{StaticResource DarkCombo}"
+                                              Width="200" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                              SelectionChanged="OnSettingChanged">
+                                        <ComboBoxItem Content="15 分钟" Tag="15" />
+                                        <ComboBoxItem Content="30 分钟" Tag="30" />
+                                        <ComboBoxItem Content="1 小时" Tag="60" />
+                                        <ComboBoxItem Content="2 小时" Tag="120" />
+                                    </ComboBox>
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
+                                               Text="固定（Pin）的标签页与当前激活的标签页不会被停放。被停放的标签页激活时会自动恢复。" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>

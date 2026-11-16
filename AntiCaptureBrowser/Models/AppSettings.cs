@@ -74,6 +74,13 @@ public class AppSettings
     /// <summary>隐藏/最小化时暂停页面中的音视频。</summary>
     public bool PauseOnHide { get; set; } = false;
 
+    // ===== 标签页停放（Memory Saver） =====
+    /// <summary>自动停放长时间未使用的后台标签页以节省内存。</summary>
+    public bool TabParkingEnabled { get; set; } = true;
+
+    /// <summary>非活动多久后停放（分钟）。</summary>
+    public int TabParkingTimeoutMinutes { get; set; } = 30;
+
     // ===== 窗口状态记忆 =====
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }

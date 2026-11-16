@@ -68,6 +68,12 @@ public class BrowserTab : INotifyPropertyChanged
     /// <summary>固定（Pin）：始终仅图标模式、固定最小宽度。</summary>
     public bool Pinned { get; set; }
 
+    /// <summary>最后激活时间（选中或在页面内交互时刷新），用于标签页停放判定。</summary>
+    public DateTime LastActiveTime { get; set; } = DateTime.Now;
+
+    /// <summary>是否已停放（TrySuspend 释放内存）。</summary>
+    public bool IsParked { get; private set; }
+
     /// <summary>历史记录标签页标识。</summary>
     public bool IsHistoryTab { get; }
 
@@ -133,6 +139,8 @@ public class BrowserTab : INotifyPropertyChanged
             : core.DocumentTitle;
         core.SourceChanged += (_, _) => AddressChanged?.Invoke(this, core.Source);
         core.HistoryChanged += (_, _) => HistoryChanged?.Invoke(this, EventArgs.Empty);
+        // 页面获得交互即视为活跃，重置停放计时
+        webView.GotFocus += (_, _) => LastActiveTime = DateTime.Now;
         // 用导航生命周期驱动标题（about:blank 等页面不触发 DocumentTitleChanged）
         core.NavigationStarting += (_, _) => Title = "正在加载…";
         core.NavigationCompleted += (_, _) =>
@@ -160,6 +168,7 @@ public class BrowserTab : INotifyPropertyChanged
         };
         // 组合模式控件的键盘输入走 WPF 管线，用 PreviewKeyDown 拦截宿主级快捷键
         // （已改为窗口式宿主：宿主级快捷键由 AppKeyboardHook 低级钩子统一处理）
+        core.NavigationStarting += (_, _) => LastActiveTime = DateTime.Now;
 
         core.Settings.AreDefaultContextMenusEnabled = true;
         ApplyUserAgent();
@@ -217,6 +226,38 @@ public class BrowserTab : INotifyPropertyChanged
         var core = WebView?.CoreWebView2;
         if (core is null) return;
         core.Settings.UserAgent = App.Settings.ResolveUserAgent() ?? "";
+    }
+
+    /// <summary>
+    /// 停放标签页（Memory Saver）：TrySuspend 释放其内存，页面停止计时器与媒体。
+    /// 激活时自动恢复。已停放或未就绪则忽略。
+    /// </summary>
+    public void Park()
+    {
+        var core = WebView?.CoreWebView2;
+        if (IsParked || core is null || !IsWebViewReady) return;
+        if (core.TrySuspend())
+        {
+            IsParked = true;
+            OnPropertyChanged(nameof(IsParked));
+        }
+    }
+
+    /// <summary>恢复已停放的标签页。</summary>
+    public async Task ResumeAsync()
+    {
+        if (!IsParked) return;
+        IsParked = false;
+        OnPropertyChanged(nameof(IsParked));
+        try
+        {
+            await (WebView?.CoreWebView2?.TryResumeAsync() ?? Task.CompletedTask);
+        }
+        catch
+        {
+            // 恢复失败时标签仍可正常使用（重新激活会话）
+        }
+        LastActiveTime = DateTime.Now;
     }
 
     private async Task LoadFaviconAsync(CoreWebView2 core)

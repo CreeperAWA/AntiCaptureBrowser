@@ -48,6 +48,7 @@ public partial class MainWindow : Window
                 or NotifyCollectionChangedAction.Reset);
         TabScroll.SizeChanged += (_, _) => UpdateTabWidths();
         _suggestTimer.Tick += (_, _) => { _suggestTimer.Stop(); _ = FetchSuggestionsAsync(); };
+        StartParkingTimer();
     }
 
     private void ApplyThemeToTabs()
@@ -231,6 +232,9 @@ public partial class MainWindow : Window
         foreach (var t in Tabs) t.IsSelected = ReferenceEquals(t, tab);
         _selectedTab = tab;
         TabContent.Content = tab.Host;
+        // 选中即激活：若标签已被停放（Memory Saver）则立即恢复
+        tab.LastActiveTime = DateTime.Now;
+        if (tab.IsParked) _ = tab.ResumeAsync();
         UpdateAddressBar();
         UpdateNavButtons();
         UpdateWindowTitle();
@@ -848,6 +852,28 @@ public partial class MainWindow : Window
                 OnTabCloseRequested(tab, EventArgs.Empty);
             }
         }
+    }
+
+    // ==================== 标签页停放（Memory Saver） ====================
+
+    private readonly DispatcherTimer _parkingTimer = new() { Interval = TimeSpan.FromMinutes(1) };
+
+    private void StartParkingTimer()
+    {
+        _parkingTimer.Tick += (_, _) =>
+        {
+            if (!App.Settings.TabParkingEnabled) return;
+            var deadline = DateTime.Now.AddMinutes(-App.Settings.TabParkingTimeoutMinutes);
+            foreach (var tab in Tabs)
+            {
+                if (tab.Pinned) continue; // 固定标签不停放
+                if (!ReferenceEquals(tab, _selectedTab) && tab.LastActiveTime < deadline)
+                {
+                    tab.Park();
+                }
+            }
+        };
+        _parkingTimer.Start();
     }
 
     // ==================== 窗口级快捷键（焦点在 WPF 控件上时） ====================
