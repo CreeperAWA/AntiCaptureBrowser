@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Windows.Threading;
 using AntiCaptureBrowser.Models;
 
 namespace AntiCaptureBrowser.Services;
@@ -7,8 +6,8 @@ namespace AntiCaptureBrowser.Services;
 /// <summary>
 /// 捕获保护监视器：主窗口之外的附属窗口（WebView2 的 DevTools 窗口、
 /// 独立下载窗口等）不会自动继承主窗口的 SetWindowDisplayAffinity，
-/// 此处通过 EVENT_OBJECT_SHOW 钩子 + 定时扫描，对它们应用相同的保护，
-/// 保护关闭时恢复为可捕获。
+/// 此处通过 EVENT_OBJECT_CREATE/SHOW 钩子纯事件驱动地对它们应用相同的保护
+/// （无轮询、无空闲开销），保护关闭时恢复为可捕获。
 /// </summary>
 public sealed class WindowAffinityWatcher : IDisposable
 {
@@ -16,6 +15,7 @@ public sealed class WindowAffinityWatcher : IDisposable
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
+    private const uint EventObjectCreate = 0x8000;
     private const uint EventObjectShow = 0x8002;
     private const uint WineventOutofcontext = 0;
     private const uint GaRoot = 2;
@@ -41,23 +41,17 @@ public sealed class WindowAffinityWatcher : IDisposable
 
     private IntPtr _mainHwnd;
     private IntPtr _winEventHook;
-    private readonly DispatcherTimer _sweepTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly WinEventDelegate _winEventDelegate; // 持有委托防止 GC 回收
 
     public WindowAffinityWatcher() => _winEventDelegate = OnWinEvent;
 
-    /// <summary>开始监视：新出现的附属窗口立即应用保护，并每 2 秒兜底扫描一次。</summary>
+    /// <summary>开始监视：一次性扫描现有附属窗口，此后由窗口创建/显示事件即时驱动。</summary>
     public void Start(IntPtr mainHwnd)
     {
         _mainHwnd = mainHwnd;
         if (_winEventHook == IntPtr.Zero)
         {
-            _winEventHook = SetWinEventHook(EventObjectShow, EventObjectShow, IntPtr.Zero, _winEventDelegate, 0, 0, WineventOutofcontext);
-        }
-        if (!_sweepTimer.IsEnabled)
-        {
-            _sweepTimer.Tick += (_, _) => Sweep();
-            _sweepTimer.Start();
+            _winEventHook = SetWinEventHook(EventObjectCreate, EventObjectShow, IntPtr.Zero, _winEventDelegate, 0, 0, WineventOutofcontext);
         }
         Sweep();
     }
@@ -70,7 +64,6 @@ public sealed class WindowAffinityWatcher : IDisposable
             UnhookWinEvent(_winEventHook);
             _winEventHook = IntPtr.Zero;
         }
-        _sweepTimer.Stop();
         Sweep(CaptureMode.Capturable);
     }
 
