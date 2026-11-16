@@ -283,47 +283,50 @@
                              TextChanged="AddressBox_TextChanged"
                              GotKeyboardFocus="AddressBox_GotKeyboardFocus" />
                 </Border>
-                <!-- 搜索联想下拉 -->
-                <Popup x:Name="SuggestPopup" PlacementTarget="{Binding ElementName=AddressBox}" Placement="Bottom"
-                       AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade" Focusable="False">
-                    <Border Background="{DynamicResource PopupBgBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                            CornerRadius="8" Margin="0,4,8,8"
-                            MinWidth="{Binding ActualWidth, ElementName=AddressBox}" MaxWidth="520">
-                        <ListBox x:Name="SuggestList" Background="Transparent" BorderThickness="0"
-                                 MaxHeight="280" FontSize="13"
-                                 Foreground="{DynamicResource ForegroundBrush}"
-                                 PreviewMouseLeftButtonUp="SuggestList_Click"
-                                 SelectionChanged="SuggestList_SelectionChanged">
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
-                                    <Setter Property="Padding" Value="10,7" />
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="ListBoxItem">
-                                                <Border x:Name="bd" Background="Transparent" CornerRadius="5"
-                                                        Padding="{TemplateBinding Padding}" Margin="3,1">
-                                                    <ContentPresenter />
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="bd" Property="Background"
-                                                                Value="{DynamicResource HoverBrush}" />
-                                                    </Trigger>
-                                                    <Trigger Property="IsSelected" Value="True">
-                                                        <Setter TargetName="bd" Property="Background"
-                                                                Value="{DynamicResource AccentTintBrush}" />
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                        </ListBox>
-                    </Border>
-                </Popup>
+            </DockPanel>
+        </Border>
+
+        <!-- 搜索联想下拉（Popup 不参与布局，避免占据工具栏填充槽） -->
+        <Popup x:Name="SuggestPopup" PlacementTarget="{Binding ElementName=AddressBox}" Placement="Bottom"
+               AllowsTransparency="True" StaysOpen="False" PopupAnimation="Fade" Focusable="False">
+            <Border Background="{DynamicResource PopupBgBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="8" Margin="0,4,8,8"
+                    MinWidth="{Binding ActualWidth, ElementName=AddressBox}" MaxWidth="520">
+                <ListBox x:Name="SuggestList" Background="Transparent" BorderThickness="0"
+                         MaxHeight="280" FontSize="13"
+                         Foreground="{DynamicResource ForegroundBrush}"
+                         PreviewMouseLeftButtonUp="SuggestList_Click"
+                         SelectionChanged="SuggestList_SelectionChanged">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Foreground" Value="{DynamicResource ForegroundBrush}" />
+                            <Setter Property="Padding" Value="10,7" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="bd" Background="Transparent" CornerRadius="5"
+                                                Padding="{TemplateBinding Padding}" Margin="3,1">
+                                            <ContentPresenter />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="bd" Property="Background"
+                                                        Value="{DynamicResource HoverBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="bd" Property="Background"
+                                                        Value="{DynamicResource AccentTintBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+            </Border>
+        </Popup>
             </DockPanel>
         </Border>
 
