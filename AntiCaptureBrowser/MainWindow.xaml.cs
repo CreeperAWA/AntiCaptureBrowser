@@ -545,12 +545,23 @@ public partial class MainWindow : Window
 
     private void UpdateAddressBar()
     {
+        // 程序性更新（切换标签页/导航）不触发搜索联想
+        _suppressSuggest = true;
         AddressBox.Text = _selectedTab?.CurrentUrl ?? "";
+        _suppressSuggest = false;
+        HideSuggest();
     }
 
     private void OnSelectedTabAddressChanged(object? sender, string url)
     {
-        if (ReferenceEquals(sender, _selectedTab)) AddressBox.Text = url;
+        if (ReferenceEquals(sender, _selectedTab))
+        {
+            // 程序性更新（页面导航）不触发搜索联想
+            _suppressSuggest = true;
+            AddressBox.Text = url;
+            _suppressSuggest = false;
+            HideSuggest();
+        }
     }
 
     private void OnFocusAddressRequested(object? sender, EventArgs e)
@@ -648,7 +659,11 @@ public partial class MainWindow : Window
         int seq = ++_suggestSeq;
         string text = AddressBox.Text.Trim();
         string engine = App.Settings.SearchEngineId;
-        if (text.Length == 0 || engine == "custom")
+
+        // 输入本身是 URL 时不联想（与 Chrome 行为一致）
+        bool isUrl = Uri.TryCreate(text, UriKind.Absolute, out var parsed)
+                     && parsed.Scheme is "http" or "https" or "file" or "about";
+        if (text.Length == 0 || engine == "custom" || isUrl)
         {
             HideSuggest();
             return;
