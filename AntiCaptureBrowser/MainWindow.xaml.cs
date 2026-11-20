@@ -281,65 +281,52 @@ public partial class MainWindow : Window
         }
     }
 
-    // ==================== 最大化贴合工作区（WM_NCCALCSIZE） ====================
-    // GlassFrameThickness 非零使 WindowChrome 走 DWM 帧路径（不再 SetWindowRgn
-    // 裁剪窗口区域——带区域的窗口 DWM 会沿区域边界绘制阴影，且阴影随焦点变化）。
-    // 代价是系统最大化时窗口矩形会外扩出工作区，在此钩子中把客户区收缩回工作区，
-    // 使最大化窗口与任务栏上沿平齐（与 Chrome 一致）。
+    // ==================== 最大化限定到工作区（WM_GETMINMAXINFO，标准做法） ====================
+    // 自定义标题栏窗口默认最大化会覆盖整个显示器（含任务栏）。
+    // 标准做法是钩住 WM_GETMINMAXINFO，把最大化目标位置/尺寸
+    // 设置为显示器的工作区（不含任务栏），与 Chrome 一致。
 
-    private const int WmNcCalcSize = 0x0083;
-    private const uint MonitorDefaultToNearestNc = 2;
-    private const int SwShowMaximized = 3;
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowPlacement(IntPtr hWnd, ref WindowPlacement lppl);
+    private const int WmGetMinMaxInfo = 0x0024;
+    private const uint MonitorDefaultToNearest = 2;
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct WindowPlacement
-    {
-        public int Length;
-        public int Flags;
-        public int ShowCmd;
-        public NcPoint PtMinPosition;
-        public NcPoint PtMaxPosition;
-        public NcRect RcNormalPosition;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NcPoint
+    private struct MinMaxPoint
     {
         public int X, Y;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct NcRect
+    private struct MinMaxInfo
     {
-        public int Left, Top, Right, Bottom;
+        public MinMaxPoint PtReserved;
+        public MinMaxPoint PtMaxSize;
+        public MinMaxPoint PtMaxPosition;
+        public MinMaxPoint PtMinTrackSize;
+        public MinMaxPoint PtMaxTrackSize;
     }
 
     private IntPtr MaximizeWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // wParam == TRUE 时 lParam 指向 NCCALCSIZE_PARAMS，首字段即窗口矩形（物理像素）。
-        // 注意：最大化瞬间 WPF 的 WindowState 还未更新，必须用 GetWindowPlacement 原生查询。
-        if (msg == WmNcCalcSize && wParam != IntPtr.Zero)
+        if (msg == WmGetMinMaxInfo)
         {
-            var placement = new WindowPlacement { Length = Marshal.SizeOf<WindowPlacement>() };
-            if (!GetWindowPlacement(hwnd, ref placement) || placement.ShowCmd != SwShowMaximized) return IntPtr.Zero;
-
             var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
-            var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearestNc);
+            var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
             if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
             {
-                var rc = Marshal.PtrToStructure<NcRect>(lParam);
-                rc.Left = Math.Max(rc.Left, mi.RcWork.Left);
-                rc.Top = Math.Max(rc.Top, mi.RcWork.Top);
-                rc.Right = Math.Min(rc.Right, mi.RcWork.Right);
-                rc.Bottom = Math.Min(rc.Bottom, mi.RcWork.Bottom);
-                Marshal.StructureToPtr(rc, lParam, false);
+                var mmi = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+                // 最大化目标 = 工作区（不含任务栏）
+                mmi.PtMaxPosition.X = mi.RcWork.Left - mi.RcMonitor.Left;
+                mmi.PtMaxPosition.Y = mi.RcWork.Top - mi.RcMonitor.Top;
+                mmi.PtMaxSize.X = mi.RcWork.Right - mi.RcWork.Left;
+                mmi.PtMaxSize.Y = mi.RcWork.Bottom - mi.RcWork.Top;
+                Marshal.StructureToPtr(mmi, lParam, true);
                 handled = true;
             }
         }
         return IntPtr.Zero;
+    }
+
+    // ==================== 自定义标题栏窗口按钮 ====================
     }
 
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
