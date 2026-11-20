@@ -246,6 +246,24 @@ public partial class MainWindow : Window
 
     private const int DwmwcpDoNotRound = 1;
     private const int DwmwcpRound = 2;
+    private const int DwmwaNcRenderingPolicy = 3;
+    private const int DwmncrpDisabled = 1;
+    private const int DwmncrpEnabled = 2;
+
+    /// <summary>DWM 窗口阴影（非客户区渲染）开关：全屏时关闭，避免阴影投到任务栏上。</summary>
+    private void SetNcRendering(bool enabled)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            int value = enabled ? DwmncrpEnabled : DwmncrpDisabled;
+            DwmSetWindowAttribute(hwnd, DwmwaNcRenderingPolicy, ref value, sizeof(int));
+        }
+        catch
+        {
+            // 旧系统无此属性，忽略
+        }
+    }
 
     private void SetCornerPreference(int value)
     {
@@ -263,9 +281,13 @@ public partial class MainWindow : Window
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
 
     private const uint MonitorDefaultToNearest = 2;
+    private const int MdtEffectiveDpi = 0;
 
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MonitorInfo
@@ -285,6 +307,43 @@ public partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpi);
+
+    /// <summary>
+    /// 目标显示器矩形换算为 WPF DIP。必须使用该显示器的有效 DPI 换算，
+    /// 使窗口物理矩形与显示器矩形完全一致——这是系统判定"前台窗口全屏"
+    /// 并自动隐藏任务栏的依据，坐标不匹配时任务栏不会隐藏。
+    /// </summary>
+    private Rect GetMonitorDipRect(IntPtr hwnd)
+    {
+        var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref mi))
+        {
+            return new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                            SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+        }
+
+        var physical = new Rect(mi.RcMonitor.Left, mi.RcMonitor.Top,
+                                mi.RcMonitor.Right - mi.RcMonitor.Left,
+                                mi.RcMonitor.Bottom - mi.RcMonitor.Top);
+
+        double scale = 1.0;
+        try
+        {
+            if (GetDpiForMonitor(monitor, MdtEffectiveDpi, out uint dpiX, out _) == 0 && dpiX > 0)
+            {
+                scale = dpiX / 96.0;
+            }
+        }
+        catch
+        {
+            scale = VisualTreeHelper.GetDpi(this).DpiScale1;
+        }
+        if (scale <= 0) scale = 1.0;
+
+        return new Rect(physical.Left / scale, physical.Top / scale,
+                        physical.Width / scale, physical.Height / scale);
+    }
 
     private bool _htmlFsActive;       // 页面处于 HTML5 全屏
     private bool _f11Active;          // 用户按 F11 的浏览器全屏
@@ -331,18 +390,19 @@ public partial class MainWindow : Window
             ? RestoreBounds
             : new Rect(Left, Top, Width, Height);
 
-        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用系统圆角与窗口边框
+        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用圆角、边框与 DWM 阴影
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
         ToolbarBorder.Visibility = Visibility.Collapsed;
         RootGrid.Margin = new Thickness(0);
         SetCornerPreference(DwmwcpDoNotRound);
         BorderThickness = new Thickness(0);
+        SetNcRendering(false);
 
-        // 标准全屏：无边框窗口精确覆盖整个显示器。
+        // 标准全屏：无边框窗口按显示器 DPI 精确覆盖整个显示器。
         // 前台窗口覆盖整个显示器时，系统会自动隐藏任务栏，无需置顶。
         WindowState = WindowState.Normal;
-        var rect = GetMonitorRect(new WindowInteropHelper(this).EnsureHandle());
+        var rect = GetMonitorDipRect(new WindowInteropHelper(this).EnsureHandle());
         Left = rect.Left;
         Top = rect.Top;
         Width = rect.Width;
@@ -357,6 +417,7 @@ public partial class MainWindow : Window
         ToolbarBorder.Visibility = Visibility.Visible;
         SetCornerPreference(DwmwcpRound);
         BorderThickness = new Thickness(1);
+        SetNcRendering(true);
 
         if (_fsWasMaximized)
         {
