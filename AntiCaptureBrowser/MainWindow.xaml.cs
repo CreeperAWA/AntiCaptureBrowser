@@ -326,9 +326,6 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    // ==================== 自定义标题栏窗口按钮 ====================
-    }
-
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
 
     private const uint MonitorDefaultToNearest = 2;
