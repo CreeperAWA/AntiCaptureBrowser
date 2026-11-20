@@ -91,6 +91,9 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         RestoreWindowBounds();
+        // 最大化时收缩客户区到工作区（消除任务栏上的阴影条）
+        var hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+        hwndSource?.AddHook(MaximizeWindowProc);
         InitTrayIcon();
         ApplyTraySettings();
         ApplyCaptureMode();
@@ -434,6 +437,41 @@ public partial class MainWindow : Window
     }
 
     private void EnableRoundedCorners() => SetCornerPreference(DwmwcpRound);
+
+    // ==================== 最大化贴合工作区（WM_NCCALCSIZE） ====================
+    // WindowChrome 最大化时会把窗口区域裁剪到工作区，但 SetWindowRgn 不裁剪子窗口——
+    // WebView2 子窗口仍外扩到任务栏下方，任务栏的阴影会投在页面内容上。
+    // 在 WM_NCCALCSIZE 中把客户区收缩回工作区，使最大化窗口与任务栏平齐。
+
+    private const int WmNcCalcSize = 0x0083;
+    private const uint MonitorDefaultToNearestNc = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NcRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    private IntPtr MaximizeWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        // wParam == TRUE 时 lParam 指向 NCCALCSIZE_PARAMS，首字段即窗口矩形（物理像素）
+        if (msg == WmNcCalcSize && wParam != IntPtr.Zero && WindowState == WindowState.Maximized)
+        {
+            var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
+            var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearestNc);
+            if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
+            {
+                var rc = Marshal.PtrToStructure<NcRect>(lParam);
+                rc.Left = Math.Max(rc.Left, mi.RcWork.Left);
+                rc.Top = Math.Max(rc.Top, mi.RcWork.Top);
+                rc.Right = Math.Min(rc.Right, mi.RcWork.Right);
+                rc.Bottom = Math.Min(rc.Bottom, mi.RcWork.Bottom);
+                Marshal.StructureToPtr(rc, lParam, false);
+                handled = true;
+            }
+        }
+        return IntPtr.Zero;
+    }
 
     // ==================== 自定义标题栏窗口按钮 ====================
 
