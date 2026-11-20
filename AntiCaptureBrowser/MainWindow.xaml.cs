@@ -26,6 +26,8 @@ public partial class MainWindow : Window
     private readonly HotkeyService _hotkeyService = new();
     private readonly AppKeyboardHook _keyboardHook = new();
     private readonly WindowAffinityWatcher _affinityWatcher = new();
+    private readonly HwndSourceHook _maximizeHook;    // 必须持有委托引用（HwndSource 用弱引用存储）
+    private readonly HwndSourceHook _trayHook;
     private bool _forceClose;
     private bool _isHiddenByHotkey;
     private bool _mediaSilencedByApp;
@@ -40,6 +42,8 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _maximizeHook = MaximizeWindowProc;
+        _trayHook = TrayWindowProc;
         InitializeComponent();
         TabsList.ItemsSource = Tabs;
         StateChanged += OnStateChanged;
@@ -90,10 +94,11 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        RestoreWindowBounds();
-        // 最大化时收缩客户区到工作区（消除任务栏上的阴影条）
+        // 钩子必须在恢复窗口状态之前挂载，否则启动即最大化时会错过
+        // WM_GETMINMAXINFO，导致最大化矩形外扩盖住任务栏
         var hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
-        hwndSource?.AddHook(MaximizeWindowProc);
+        hwndSource?.AddHook(_maximizeHook);
+        RestoreWindowBounds();
         InitTrayIcon();
         ApplyTraySettings();
         ApplyCaptureMode();
@@ -114,7 +119,7 @@ public partial class MainWindow : Window
         _trayService.Activated += RestoreFromTray;
         _trayService.MenuRequested += ShowTrayMenu;
         var source = (HwndSource?)PresentationSource.FromVisual(this);
-        source?.AddHook(TrayWindowProc);
+        source?.AddHook(_trayHook);
     }
 
     private IntPtr TrayWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -342,8 +347,7 @@ public partial class MainWindow : Window
         public int CbSize;
         public RECT RcMonitor;
         public RECT RcWork;
-        public uint DwStyle;
-        public uint DwStyleMask;
+        public uint DwFlags;
     }
 
     [StructLayout(LayoutKind.Sequential)]
