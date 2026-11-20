@@ -19,16 +19,8 @@ public partial class HistoryView : UserControl
 
     private void Refresh()
     {
-        var items = HistoryService.Query(SearchBox.Text);
-        HistoryList.ItemsSource = items
-            .Select(e => new
-            {
-                e.Url,
-                e.Title,
-                TimeText = e.Time.ToString("yyyy-MM-dd HH:mm"),
-            })
-            .ToList();
-        EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HistoryList.ItemsSource = HistoryService.Query(SearchBox.Text);
+        EmptyText.Visibility = HistoryList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => Refresh();
