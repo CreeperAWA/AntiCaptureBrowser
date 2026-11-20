@@ -91,6 +91,9 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         RestoreWindowBounds();
+        // 最大化时收缩客户区到工作区（消除任务栏上的阴影条）
+        var hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
+        hwndSource?.AddHook(MaximizeWindowProc);
         InitTrayIcon();
         ApplyTraySettings();
         ApplyCaptureMode();
@@ -276,6 +279,42 @@ public partial class MainWindow : Window
         {
             // Windows 10 无此属性，忽略
         }
+    }
+
+    // ==================== 最大化贴合工作区（WM_NCCALCSIZE） ====================
+    // GlassFrameThickness 非零使 WindowChrome 走 DWM 帧路径（不再 SetWindowRgn
+    // 裁剪窗口区域——带区域的窗口 DWM 会沿区域边界绘制阴影，且阴影随焦点变化）。
+    // 代价是系统最大化时窗口矩形会外扩出工作区，在此钩子中把客户区收缩回工作区，
+    // 使最大化窗口与任务栏上沿平齐（与 Chrome 一致）。
+
+    private const int WmNcCalcSize = 0x0083;
+    private const uint MonitorDefaultToNearestNc = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NcRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    private IntPtr MaximizeWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        // wParam == TRUE 时 lParam 指向 NCCALCSIZE_PARAMS，首字段即窗口矩形（物理像素）
+        if (msg == WmNcCalcSize && wParam != IntPtr.Zero && WindowState == WindowState.Maximized)
+        {
+            var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
+            var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearestNc);
+            if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
+            {
+                var rc = Marshal.PtrToStructure<NcRect>(lParam);
+                rc.Left = Math.Max(rc.Left, mi.RcWork.Left);
+                rc.Top = Math.Max(rc.Top, mi.RcWork.Top);
+                rc.Right = Math.Min(rc.Right, mi.RcWork.Right);
+                rc.Bottom = Math.Min(rc.Bottom, mi.RcWork.Bottom);
+                Marshal.StructureToPtr(rc, lParam, false);
+                handled = true;
+            }
+        }
+        return IntPtr.Zero;
     }
 
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
@@ -940,8 +979,6 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
-        // 无边框窗口最大化时会向四周外扩 ResizeBorderThickness，预留边距避免内容被裁掉
-        RootGrid.Margin = WindowState == WindowState.Maximized ? new Thickness(6, 6, 6, 6) : new Thickness(0);
         BtnMaximize.Content = WindowState == WindowState.Maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
         ToolTipService.SetToolTip(BtnMaximize, WindowState == WindowState.Maximized ? "还原" : "最大化");
 
