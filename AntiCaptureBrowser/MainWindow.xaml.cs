@@ -376,7 +376,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            scale = VisualTreeHelper.GetDpi(this).DpiScale1;
+            scale = VisualTreeHelper.GetDpi(this).PixelsPerInchX / 96.0;
         }
         if (scale <= 0) scale = 1.0;
 
