@@ -100,6 +100,7 @@ public class BrowserTab : INotifyPropertyChanged
     public event EventHandler? CloseRequested;
     public event EventHandler<string>? AddressChanged;
     public event EventHandler<string>? Navigated;              // 导航完成（含最终 URL）
+    public event EventHandler<bool>? FullScreenChanged;        // 页面进入/退出 HTML5 全屏
     public event EventHandler? HistoryChanged;
 
     private const string PauseMediaScript =
@@ -158,6 +159,9 @@ public class BrowserTab : INotifyPropertyChanged
             NewTabRequested?.Invoke(this, e.Uri);
         };
         core.WindowCloseRequested += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
+        // 页面 HTML5 全屏（视频全屏按钮等）时通知宿主隐藏浏览器 UI
+        core.ContainsFullScreenElementChanged += (_, _)
+            => FullScreenChanged?.Invoke(this, core.ContainsFullScreenElement);
         // 站点图标变化时加载真实 favicon；导航完成后兜底补抓一次
         core.FaviconChanged += async (_, _) => await LoadFaviconAsync(core);
         core.NavigationCompleted += async (_, _) =>

@@ -63,8 +63,7 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             await OpenHomeTabAsync();
-            // 启动后焦点置于网页内容而非地址栏（低优先级延迟执行，避开窗口激活的焦点分配）
-            Dispatcher.InvokeAsync(() => _selectedTab?.FocusContent(), DispatcherPriority.Background);
+            FocusContentSoon(_selectedTab!);
         };
         // 系统主题切换时同步所有已打开标签页的配色
         ThemeManager.ThemeChanged += ApplyThemeToTabs;
@@ -235,12 +234,119 @@ public partial class MainWindow : Window
             case "cycleback":
                 CycleTab(true);
                 break;
+            case "fullscreen":
+                ToggleFullScreen();
+                break;
         }
     }
 
     // Win11 圆角（DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2）；旧系统自动忽略
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+    // ==================== 全屏（HTML5 视频全屏 / F11） ====================
+
+    private const uint MonitorDefaultToNearest = 2;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int CbSize;
+        public RECT RcMonitor;
+        public RECT RcWork;
+        public uint DwStyle;
+        public uint DwStyleMask;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpi);
+
+    private bool _htmlFsActive;       // 页面处于 HTML5 全屏
+    private bool _f11Active;          // 用户按 F11 的浏览器全屏
+    private bool _isUiFullScreen;     // 当前是否处于全屏布局
+    private bool _fsWasMaximized;
+    private Rect _fsSavedBounds;
+
+    private static Rect GetMonitorRect(IntPtr hwnd)
+    {
+        var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        return monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi)
+            ? new Rect(mi.RcMonitor.Left, mi.RcMonitor.Top,
+                       mi.RcMonitor.Right - mi.RcMonitor.Left, mi.RcMonitor.Bottom - mi.RcMonitor.Top)
+            : new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                       SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+    }
+
+    private void OnTabFullScreenChanged(object? sender, bool fullScreen)
+    {
+        _htmlFsActive = fullScreen;
+        UpdateFullScreenState();
+    }
+
+    private void ToggleFullScreen()
+    {
+        _f11Active = !_f11Active;
+        UpdateFullScreenState();
+    }
+
+    private void UpdateFullScreenState()
+    {
+        bool want = _htmlFsActive || _f11Active;
+        if (want == _isUiFullScreen) return;
+        if (want) EnterFullScreen(); else ExitFullScreen();
+        _isUiFullScreen = want;
+    }
+
+    private void EnterFullScreen()
+    {
+        _fsWasMaximized = WindowState == WindowState.Maximized;
+        _fsSavedBounds = RestoreBounds; // 正常状态下的边界（还原时使用）
+
+        // 隐藏标题栏与工具栏，内容铺满整个窗口
+        TitleBarBorder.Visibility = Visibility.Collapsed;
+        TitleRow.Height = new GridLength(0);
+        ToolbarBorder.Visibility = Visibility.Collapsed;
+        RootGrid.Margin = new Thickness(0);
+
+        // 覆盖整个显示器（含任务栏区域），临时置顶让任务栏退场
+        WindowState = WindowState.Normal;
+        var rect = GetMonitorRect(new WindowInteropHelper(this).EnsureHandle());
+        Left = rect.Left;
+        Top = rect.Top;
+        Width = rect.Width;
+        Height = rect.Height;
+        Topmost = true;
+    }
+
+    private void ExitFullScreen()
+    {
+        Topmost = false;
+        TitleBarBorder.Visibility = Visibility.Visible;
+        TitleRow.Height = new GridLength(40);
+        ToolbarBorder.Visibility = Visibility.Visible;
+
+        if (_fsWasMaximized)
+        {
+            WindowState = WindowState.Maximized; // 状态处理器会恢复 6px 边距
+        }
+        else
+        {
+            Left = _fsSavedBounds.Left;
+            Top = _fsSavedBounds.Top;
+            Width = _fsSavedBounds.Width;
+            Height = _fsSavedBounds.Height;
+        }
+    }
 
     private void EnableRoundedCorners()
     {
@@ -298,6 +404,7 @@ public partial class MainWindow : Window
         tab.AddressChanged += OnSelectedTabAddressChanged;
         tab.HistoryChanged += OnSelectedTabHistoryChanged;
         tab.Navigated += OnTabNavigated;
+        tab.FullScreenChanged += OnTabFullScreenChanged;
         tab.PropertyChanged += OnTabPropertyChanged;
     }
 
@@ -310,11 +417,31 @@ public partial class MainWindow : Window
         await EnsureEnvironmentAsync();
         var tab = CreateWebTab();
         await tab.InitializeAsync(_environment!, url ?? GetHomePageUrl());
+        FocusContentSoon(tab);
+    }
+
+    /// <summary>两级延迟调度把焦点交给网页内容，避开窗口激活与 WebView2 异步初始化的焦点竞争。</summary>
+    private void FocusContentSoon(BrowserTab tab)
+    {
+        Dispatcher.InvokeAsync(() => tab.FocusContent(), DispatcherPriority.Background);
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            await Task.Delay(600);
+            if (ReferenceEquals(_selectedTab, tab) && tab.IsWebViewReady)
+            {
+                tab.FocusContent();
+            }
+        }, DispatcherPriority.Background);
     }
 
     private void OnTabCloseRequested(object? sender, EventArgs e)
     {
         if (sender is not BrowserTab tab) return;
+        if (_htmlFsActive && ReferenceEquals(tab, _selectedTab))
+        {
+            _htmlFsActive = false; // 关闭全屏中的标签页时退出全屏布局
+            UpdateFullScreenState();
+        }
         int index = Tabs.IndexOf(tab);
         Tabs.Remove(tab);
 
@@ -333,6 +460,12 @@ public partial class MainWindow : Window
     {
         foreach (var t in Tabs) t.IsSelected = ReferenceEquals(t, tab);
         _selectedTab = tab;
+        // 切换标签页时退出页面 HTML5 全屏（Chrome 行为）
+        if (_htmlFsActive)
+        {
+            _htmlFsActive = false;
+            UpdateFullScreenState();
+        }
         TabContent.Content = tab.Host;
         // 选中即激活：若标签已被停放（Memory Saver）则立即恢复
         tab.LastActiveTime = DateTime.Now;
@@ -1017,6 +1150,11 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             OnFocusAddressRequested(this, EventArgs.Empty);
+        }
+        else if (e.Key == Key.F11)
+        {
+            e.Handled = true;
+            ToggleFullScreen();
         }
     }
 }

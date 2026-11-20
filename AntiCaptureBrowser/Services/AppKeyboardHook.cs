@@ -101,8 +101,12 @@ public sealed class AppKeyboardHook : IDisposable
         bool ctrl = (GetAsyncKeyState(VkControl) & 0x8000) != 0;
         bool alt = (GetAsyncKeyState(VkMenu) & 0x8000) != 0;
         bool shift = (GetAsyncKeyState(VkShift) & 0x8000) != 0;
-        if (!ctrl || alt) return false;
+        if (alt) return false;
 
+        // F11：无需修饰键（浏览器全屏）
+        if (vk == 0x7A) { action = "fullscreen"; return true; }
+
+        if (!ctrl) return false;
         switch (vk)
         {
             case 'T': action = "newtab"; return true;
