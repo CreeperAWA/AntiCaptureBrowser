@@ -309,8 +309,11 @@ public partial class MainWindow : Window
 
     private void EnterFullScreen()
     {
+        // 记录还原信息（先于状态变更）
         _fsWasMaximized = WindowState == WindowState.Maximized;
-        _fsSavedBounds = RestoreBounds; // 正常状态下的边界（还原时使用）
+        _fsSavedBounds = WindowState == WindowState.Maximized
+            ? RestoreBounds
+            : new Rect(Left, Top, Width, Height);
 
         // 隐藏标题栏与工具栏，内容铺满整个窗口
         TitleBarBorder.Visibility = Visibility.Collapsed;
@@ -318,19 +321,19 @@ public partial class MainWindow : Window
         ToolbarBorder.Visibility = Visibility.Collapsed;
         RootGrid.Margin = new Thickness(0);
 
-        // 覆盖整个显示器（含任务栏区域），临时置顶让任务栏退场
+        // 标准全屏：无边框窗口精确覆盖整个显示器。
+        // 前台窗口覆盖整个显示器时，系统会自动隐藏任务栏，无需置顶。
         WindowState = WindowState.Normal;
         var rect = GetMonitorRect(new WindowInteropHelper(this).EnsureHandle());
         Left = rect.Left;
         Top = rect.Top;
         Width = rect.Width;
         Height = rect.Height;
-        Topmost = true;
+        Activate();
     }
 
     private void ExitFullScreen()
     {
-        Topmost = false;
         TitleBarBorder.Visibility = Visibility.Visible;
         TitleRow.Height = new GridLength(40);
         ToolbarBorder.Visibility = Visibility.Visible;
@@ -346,6 +349,7 @@ public partial class MainWindow : Window
             Width = _fsSavedBounds.Width;
             Height = _fsSavedBounds.Height;
         }
+        Activate(); // 恢复前台，任务栏随之回来
     }
 
     private void EnableRoundedCorners()
