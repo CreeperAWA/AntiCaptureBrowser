@@ -240,9 +240,25 @@ public partial class MainWindow : Window
         }
     }
 
-    // Win11 圆角（DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2）；旧系统自动忽略
+    // Win11 圆角（DWMWA_WINDOW_CORNER_PREFERENCE = 33）；旧系统自动忽略
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+
+    private const int DwmwcpDoNotRound = 1;
+    private const int DwmwcpRound = 2;
+
+    private void SetCornerPreference(int value)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            DwmSetWindowAttribute(hwnd, 33, ref value, sizeof(int));
+        }
+        catch
+        {
+            // Windows 10 无此属性，忽略
+        }
+    }
 
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
 
@@ -315,11 +331,13 @@ public partial class MainWindow : Window
             ? RestoreBounds
             : new Rect(Left, Top, Width, Height);
 
-        // 隐藏标题栏与工具栏，内容铺满整个窗口
+        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用系统圆角与窗口边框
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
         ToolbarBorder.Visibility = Visibility.Collapsed;
         RootGrid.Margin = new Thickness(0);
+        SetCornerPreference(DwmwcpDoNotRound);
+        BorderThickness = new Thickness(0);
 
         // 标准全屏：无边框窗口精确覆盖整个显示器。
         // 前台窗口覆盖整个显示器时，系统会自动隐藏任务栏，无需置顶。
@@ -337,6 +355,8 @@ public partial class MainWindow : Window
         TitleBarBorder.Visibility = Visibility.Visible;
         TitleRow.Height = new GridLength(40);
         ToolbarBorder.Visibility = Visibility.Visible;
+        SetCornerPreference(DwmwcpRound);
+        BorderThickness = new Thickness(1);
 
         if (_fsWasMaximized)
         {
@@ -352,19 +372,7 @@ public partial class MainWindow : Window
         Activate(); // 恢复前台，任务栏随之回来
     }
 
-    private void EnableRoundedCorners()
-    {
-        try
-        {
-            int preference = 2;
-            var hwnd = new WindowInteropHelper(this).EnsureHandle();
-            DwmSetWindowAttribute(hwnd, 33, ref preference, sizeof(int));
-        }
-        catch
-        {
-            // Windows 10 无此属性，忽略
-        }
-    }
+    private void EnableRoundedCorners() => SetCornerPreference(DwmwcpRound);
 
     // ==================== 自定义标题栏窗口按钮 ====================
 
