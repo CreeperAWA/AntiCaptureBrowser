@@ -328,7 +328,6 @@ public partial class MainWindow : Window
 
     // ==================== 全屏（HTML5 视频全屏 / F11） ====================
 
-    private const uint MonitorDefaultToNearest = 2;
     private const int MdtEffectiveDpi = 0;
 
     [DllImport("user32.dll")]
