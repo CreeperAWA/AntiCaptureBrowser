@@ -14,7 +14,7 @@ namespace AntiCaptureBrowser.Services;
 /// </summary>
 public static class AppIconFactory
 {
-    public static ImageSource GetModeIcon(CaptureMode mode, double size = 32)
+    public static BitmapSource GetModeIcon(CaptureMode mode, double size = 32)
     {
         string file = Path.Combine(AppContext.BaseDirectory, "Assets", mode switch
         {
@@ -43,7 +43,7 @@ public static class AppIconFactory
     }
 
     /// <summary>运行时绘制占位图标：圆角底色 + Segoe MDL2 字形。</summary>
-    private static ImageSource DrawPlaceholder(CaptureMode mode, double size)
+    private static BitmapSource DrawPlaceholder(CaptureMode mode, double size)
     {
         (Color background, string glyph, double fontSize) = mode switch
         {
