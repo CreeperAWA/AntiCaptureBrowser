@@ -337,7 +337,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            scale = VisualTreeHelper.GetDpi(this).DpiScale1;
+            scale = VisualTreeHelper.GetDpi(this).PixelsPerInchX / 96.0;
         }
         if (scale <= 0) scale = 1.0;
 
@@ -940,10 +940,15 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
-        // 无边框窗口最大化时会向四周外扩 ResizeBorderThickness，预留边距避免内容被裁掉
-        RootGrid.Margin = WindowState == WindowState.Maximized ? new Thickness(6, 6, 6, 6) : new Thickness(0);
-        BtnMaximize.Content = WindowState == WindowState.Maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
-        ToolTipService.SetToolTip(BtnMaximize, WindowState == WindowState.Maximized ? "还原" : "最大化");
+        bool maximized = WindowState == WindowState.Maximized;
+        // 最大化时不让窗口外扩 ResizeBorderThickness 伸进任务栏区域
+        //（否则底边会露出一条窗口背景色/阴影的暗条），窗口精确贴合工作区
+        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = maximized ? new Thickness(0) : new Thickness(6);
+        }
+        BtnMaximize.Content = maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
+        ToolTipService.SetToolTip(BtnMaximize, maximized ? "还原" : "最大化");
 
         if (WindowState == WindowState.Minimized)
         {
