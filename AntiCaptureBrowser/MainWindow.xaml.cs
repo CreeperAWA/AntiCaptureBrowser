@@ -289,6 +289,27 @@ public partial class MainWindow : Window
 
     private const int WmNcCalcSize = 0x0083;
     private const uint MonitorDefaultToNearestNc = 2;
+    private const int SwShowMaximized = 3;
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowPlacement(IntPtr hWnd, ref WindowPlacement lppl);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowPlacement
+    {
+        public int Length;
+        public int Flags;
+        public int ShowCmd;
+        public NcPoint PtMinPosition;
+        public NcPoint PtMaxPosition;
+        public NcRect RcNormalPosition;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NcPoint
+    {
+        public int X, Y;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NcRect
@@ -298,9 +319,13 @@ public partial class MainWindow : Window
 
     private IntPtr MaximizeWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // wParam == TRUE 时 lParam 指向 NCCALCSIZE_PARAMS，首字段即窗口矩形（物理像素）
-        if (msg == WmNcCalcSize && wParam != IntPtr.Zero && WindowState == WindowState.Maximized)
+        // wParam == TRUE 时 lParam 指向 NCCALCSIZE_PARAMS，首字段即窗口矩形（物理像素）。
+        // 注意：最大化瞬间 WPF 的 WindowState 还未更新，必须用 GetWindowPlacement 原生查询。
+        if (msg == WmNcCalcSize && wParam != IntPtr.Zero)
         {
+            var placement = new WindowPlacement { Length = Marshal.SizeOf<WindowPlacement>() };
+            if (!GetWindowPlacement(hwnd, ref placement) || placement.ShowCmd != SwShowMaximized) return IntPtr.Zero;
+
             var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
             var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearestNc);
             if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
@@ -979,8 +1004,11 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
-        BtnMaximize.Content = WindowState == WindowState.Maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
-        ToolTipService.SetToolTip(BtnMaximize, WindowState == WindowState.Maximized ? "还原" : "最大化");
+        bool maximized = WindowState == WindowState.Maximized;
+        // 最大化时保留标题栏上沿留白（窗口背景色与标题栏同色，视觉连续）
+        RootGrid.Margin = maximized ? new Thickness(0, 6, 0, 0) : new Thickness(0);
+        BtnMaximize.Content = maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
+        ToolTipService.SetToolTip(BtnMaximize, maximized ? "还原" : "最大化");
 
         if (WindowState == WindowState.Minimized)
         {
