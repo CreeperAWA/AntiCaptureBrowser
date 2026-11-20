@@ -177,7 +177,7 @@ public class BrowserTab : INotifyPropertyChanged
         core.Settings.AreDefaultContextMenusEnabled = true;
         ApplyUserAgent();
         // 让网页内容跟随应用主题（prefers-color-scheme）
-        core.Profile.PreferredColorScheme = ThemeManager.WebViewColorScheme;
+        core.Profile.PreferredColorScheme = ThemeManager.ResolveWebColorScheme();
 
         if (!string.IsNullOrWhiteSpace(initialUrl))
         {

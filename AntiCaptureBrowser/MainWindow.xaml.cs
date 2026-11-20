@@ -85,7 +85,7 @@ public partial class MainWindow : Window
         foreach (var tab in Tabs)
         {
             var core = tab.WebView?.CoreWebView2;
-            if (core is not null) core.Profile.PreferredColorScheme = ThemeManager.WebViewColorScheme;
+            if (core is not null) core.Profile.PreferredColorScheme = ThemeManager.ResolveWebColorScheme();
         }
     }
 

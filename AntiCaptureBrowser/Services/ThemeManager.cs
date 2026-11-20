@@ -77,7 +77,13 @@ public static class ThemeManager
 
     public static void Apply()
     {
-        Current = IsSystemDark() ? AppThemeMode.Dark : AppThemeMode.Light;
+        // 主题模式：system（跟随系统）/ light / dark
+        Current = App.Settings.ThemeMode switch
+        {
+            "light" => AppThemeMode.Light,
+            "dark" => AppThemeMode.Dark,
+            _ => IsSystemDark() ? AppThemeMode.Dark : AppThemeMode.Light,
+        };
         var resources = Application.Current.Resources;
         foreach (var (key, (dark, light)) in Palette)
         {
@@ -88,10 +94,18 @@ public static class ThemeManager
         ThemeChanged?.Invoke();
     }
 
-    /// <summary>WebView2 页面应使用的配色方案（prefers-color-scheme）。</summary>
-    public static CoreWebView2PreferredColorScheme WebViewColorScheme => Current == AppThemeMode.Dark
-        ? CoreWebView2PreferredColorScheme.Dark
-        : CoreWebView2PreferredColorScheme.Light;
+    /// <summary>解析网页应使用的配色方案（follow = 跟随应用主题）。</summary>
+    public static CoreWebView2PreferredColorScheme ResolveWebColorScheme()
+    {
+        return App.Settings.WebThemeMode switch
+        {
+            "light" => CoreWebView2PreferredColorScheme.Light,
+            "dark" => CoreWebView2PreferredColorScheme.Dark,
+            _ => Current == AppThemeMode.Dark
+                ? CoreWebView2PreferredColorScheme.Dark
+                : CoreWebView2PreferredColorScheme.Light,
+        };
+    }
 
     private static Color Col(string hex) => (Color)ColorConverter.ConvertFromString(hex);
 }

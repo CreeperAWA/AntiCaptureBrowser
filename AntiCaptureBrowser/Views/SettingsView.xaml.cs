@@ -24,6 +24,7 @@ public partial class SettingsView : UserControl
         InitializeComponent();
         _flashTimer.Tick += (_, _) => SavedText.Visibility = Visibility.Hidden;
         _sections.Add(("general", "常规", "主页 新标签页 homepage 首页 起始页", PageGeneral));
+        _sections.Add(("appearance", "外观", "外观 主题 亮色 暗色 深色 浅色 跟随系统 appearance theme color", PageAppearance));
         _sections.Add(("search", "搜索引擎", "搜索 google bing duckduckgo 百度 自定义 search engine", PageSearch));
         _sections.Add(("privacy", "隐私与捕获保护", "隐私 捕获 截图 录屏 屏幕共享 防捕获 透明 黑色 displayaffinity capture", PagePrivacy));
         _sections.Add(("hotkey", "快捷键", "快捷键 热键 隐藏 恢复 全局 hotkey key", PageHotkey));
@@ -95,6 +96,7 @@ public partial class SettingsView : UserControl
             _selectedCategory = rb.Name switch
             {
                 nameof(NavGeneral) => "general",
+                nameof(NavAppearance) => "appearance",
                 nameof(NavSearch) => "search",
                 nameof(NavPrivacy) => "privacy",
                 nameof(NavHotkey) => "hotkey",
@@ -141,6 +143,18 @@ public partial class SettingsView : UserControl
         {
             HomePageModeCombo.SelectedIndex = s.HomePageMode == HomePageMode.CustomUrl ? 0 : 1;
             HomePageUrlBox.Text = s.HomePageUrl;
+            ThemeModeCombo.SelectedIndex = s.ThemeMode switch
+            {
+                "light" => 1,
+                "dark" => 2,
+                _ => 0,
+            };
+            WebThemeCombo.SelectedIndex = s.WebThemeMode switch
+            {
+                "light" => 1,
+                "dark" => 2,
+                _ => 0,
+            };
             SearchEngineCombo.SelectedIndex = s.SearchEngineId switch
             {
                 "google" => 0,
@@ -201,6 +215,8 @@ public partial class SettingsView : UserControl
         var s = App.Settings;
         s.HomePageMode = HomePageModeCombo.SelectedIndex == 1 ? HomePageMode.Blank : HomePageMode.CustomUrl;
         s.HomePageUrl = HomePageUrlBox.Text.Trim();
+        s.ThemeMode = ((ComboBoxItem)ThemeModeCombo.SelectedItem)?.Tag as string ?? "system";
+        s.WebThemeMode = ((ComboBoxItem)WebThemeCombo.SelectedItem)?.Tag as string ?? "follow";
         s.SearchEngineId = ((ComboBoxItem)SearchEngineCombo.SelectedItem)?.Tag as string ?? "bing";
         s.CustomSearchUrl = CustomSearchUrlBox.Text.Trim();
         s.CaptureMode =

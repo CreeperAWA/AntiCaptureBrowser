@@ -74,6 +74,13 @@ public class AppSettings
     /// <summary>隐藏/最小化时暂停页面中的音视频。</summary>
     public bool PauseOnHide { get; set; } = false;
 
+    // ===== 外观 =====
+    /// <summary>应用主题模式：system（跟随系统）/ light / dark。</summary>
+    public string ThemeMode { get; set; } = "system";
+
+    /// <summary>网页主题：follow（跟随应用主题）/ light / dark。</summary>
+    public string WebThemeMode { get; set; } = "follow";
+
     // ===== 标签页停放（Memory Saver） =====
     /// <summary>自动停放长时间未使用的后台标签页以节省内存。</summary>
     public bool TabParkingEnabled { get; set; } = true;

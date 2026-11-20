@@ -307,6 +307,8 @@
                                Foreground="{DynamicResource ForegroundBrush}" />
                     <RadioButton x:Name="NavGeneral" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
                                  Tag="&#xE80F;" Content="常规" Checked="Nav_Checked" />
+                    <RadioButton x:Name="NavAppearance" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
+                                 Tag="&#xE790;" Content="外观" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavSearch" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
                                  Tag="&#xE721;" Content="搜索引擎" Checked="Nav_Checked" />
                     <RadioButton x:Name="NavPrivacy" Style="{StaticResource NavRadio}" GroupName="SettingsNav"
@@ -375,6 +377,47 @@
                                              TextChanged="OnSettingChanged" />
                                     <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
                                                Text="提示：地址栏输入网址回车即导航；输入普通文字则用「搜索引擎」分类中选择的引擎搜索。" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ============ 外观 ============ -->
+                    <Grid x:Name="PageAppearance">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource PageIcon}">
+                                    <TextBlock Style="{StaticResource PageGlyph}" Text="&#xE790;" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="14,2,0,0">
+                                    <TextBlock Style="{StaticResource PageTitle}" Text="外观" />
+                                    <TextBlock Style="{StaticResource PageDesc}" Text="应用与网页的配色主题" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Card}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="主题模式" />
+                                    <ComboBox x:Name="ThemeModeCombo" Style="{StaticResource DarkCombo}"
+                                              Width="240" HorizontalAlignment="Left" Margin="0,8,0,10"
+                                              SelectionChanged="OnSettingChanged">
+                                        <ComboBoxItem Content="跟随系统" Tag="system" />
+                                        <ComboBoxItem Content="亮色" Tag="light" />
+                                        <ComboBoxItem Content="暗色" Tag="dark" />
+                                    </ComboBox>
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="网页配色" />
+                                    <ComboBox x:Name="WebThemeCombo" Style="{StaticResource DarkCombo}"
+                                              Width="240" HorizontalAlignment="Left" Margin="0,8,0,10"
+                                              SelectionChanged="OnSettingChanged">
+                                        <ComboBoxItem Content="跟随应用主题" Tag="follow" />
+                                        <ComboBoxItem Content="亮色" Tag="light" />
+                                        <ComboBoxItem Content="暗色" Tag="dark" />
+                                    </ComboBox>
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0"
+                                               Text="主题模式同时控制浏览器界面与图标配色；网页配色通过 prefers-color-scheme 传递给网站，立即对所有标签页生效。" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
