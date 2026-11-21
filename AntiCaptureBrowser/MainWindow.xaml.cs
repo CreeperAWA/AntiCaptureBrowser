@@ -544,16 +544,16 @@ public partial class MainWindow : Window
         }
         BorderThickness = _fsWasMaximized ? new Thickness(0) : new Thickness(1);
 
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
         if (_fsWasMaximized)
         {
-            WindowState = WindowState.Maximized; // 状态处理器会恢复 6px 边距
+            // SetWindowPlacement 同时恢复最大化状态与还原位置：
+            // 动画终点是工作区矩形，不能让 WPF 把它记成还原位置
+            SetPlacement(hwnd, SwShowMaximized, DipToPhysicalRect(_fsSavedBounds));
         }
         else
         {
-            Left = _fsSavedBounds.Left;
-            Top = _fsSavedBounds.Top;
-            Width = _fsSavedBounds.Width;
-            Height = _fsSavedBounds.Height;
+            SetPlacement(hwnd, SwShowNormal, DipToPhysicalRect(_fsSavedBounds));
         }
     }
 
@@ -630,6 +630,52 @@ public partial class MainWindow : Window
 
     private static int Lerp(int a, int b, double t) => a + (int)Math.Round((b - a) * t);
 
+    private const int SwShowNormal = 1;
+    private const int SwShowMaximized = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowPlacement
+    {
+        public int Length;
+        public int Flags;
+        public int ShowCmd;
+        public MinMaxPoint PtMinPosition;
+        public MinMaxPoint PtMaxPosition;
+        public RECT RcNormalPosition;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPlacement(IntPtr hWnd, ref WindowPlacement placement);
+
+    /// <summary>设置窗口状态与还原位置（物理像素）。动画结束时用它收尾：
+    /// 动画终点矩形是中间状态，不能让 WPF 把它记录成还原位置（RestoreBounds 即
+    /// GetWindowPlacement 的 rcNormalPosition）。</summary>
+    private void SetPlacement(IntPtr hwnd, int showCmd, RECT restoreRect)
+    {
+        var wp = new WindowPlacement
+        {
+            Length = Marshal.SizeOf<WindowPlacement>(),
+            ShowCmd = showCmd,
+            RcNormalPosition = restoreRect,
+        };
+        SetWindowPlacement(hwnd, ref wp);
+    }
+
+    /// <summary>历史版本曾把最大化矩形当作还原位置保存下来；判断两个矩形是否近似相等用于识别并自愈。</summary>
+    private static bool ApproxEqual(RECT a, RECT b) =>
+        Math.Abs(a.Left - b.Left) <= 8 && Math.Abs(a.Top - b.Top) <= 8 &&
+        Math.Abs(a.Right - b.Right) <= 8 && Math.Abs(a.Bottom - b.Bottom) <= 8;
+
+    /// <summary>默认还原矩形：工作区的 3/4 居中（用于替换被污染的还原位置）。</summary>
+    private static RECT DefaultNormalRect(RECT work)
+    {
+        int w = (work.Right - work.Left) * 3 / 4;
+        int h = (work.Bottom - work.Top) * 3 / 4;
+        int x = work.Left + ((work.Right - work.Left) - w) / 2;
+        int y = work.Top + ((work.Bottom - work.Top) - h) / 2;
+        return new RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
+    }
+
     /// <summary>DIP 矩形 → 物理像素矩形（按窗口当前 DPI）。</summary>
     private RECT DipToPhysicalRect(Rect dip)
     {
@@ -665,13 +711,25 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         if (WindowState == WindowState.Maximized)
         {
-            // 还原：动画回还原矩形，结束时切回 Normal（WPF 按 RestoreBounds 定位，与动画终点一致）
-            AnimateWindowRect(DipToPhysicalRect(RestoreBounds), () => WindowState = WindowState.Normal);
+            // 还原：动画回还原矩形；结束时用 SetWindowPlacement 切回 Normal 并锁定还原位置
+            var target = DipToPhysicalRect(RestoreBounds);
+            if (GetWorkRect(hwnd, out var work) && ApproxEqual(target, work))
+            {
+                target = DefaultNormalRect(work); // 还原位置曾被记成最大化矩形：自愈为默认尺寸
+            }
+            AnimateWindowRect(target, () => SetPlacement(hwnd, SwShowNormal, target));
         }
         else if (GetWorkRect(hwnd, out var work))
         {
-            // 最大化：动画到当前显示器工作区，结束时置 Maximized（GETMINMAXINFO 保证矩形一致）
-            AnimateWindowRect(work, () => WindowState = WindowState.Maximized);
+            // 最大化：动画到当前显示器工作区；结束时用 SetWindowPlacement 置为 Maximized，
+            // 并把还原位置锁回动画前的矩形（否则 WPF 会把工作区矩形记成还原位置，
+            // 导致还原时大小不变、动画无位移）
+            GetWindowRect(hwnd, out var from);
+            if (ApproxEqual(from, work))
+            {
+                from = DefaultNormalRect(work); // 窗口本身已是工作区大小（污染状态）：自愈为默认尺寸
+            }
+            AnimateWindowRect(work, () => SetPlacement(hwnd, SwShowMaximized, from));
         }
         else
         {
