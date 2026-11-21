@@ -257,6 +257,22 @@ public partial class MainWindow : Window
     private const int DwmwaNcRenderingPolicy = 3;
     private const int DwmncrpDisabled = 1;
     private const int DwmncrpEnabled = 2;
+    private const int DwmwaBorderColor = 34;          // Win11 窗口边框颜色
+    private const int DwmwaColorNone = unchecked((int)0xFFFFFFFE); // 无边框
+
+    /// <summary>Win11 窗口边框线开关：全屏时去掉，避免四周出现浅色描边。</summary>
+    private void SetBorderColor(int value)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            DwmSetWindowAttribute(hwnd, DwmwaBorderColor, ref value, sizeof(int));
+        }
+        catch
+        {
+            // Windows 10 无此属性，忽略
+        }
+    }
 
     /// <summary>DWM 窗口阴影（非客户区渲染）开关：全屏时关闭，避免阴影投到任务栏上。</summary>
     private void SetNcRendering(bool enabled)
@@ -441,13 +457,14 @@ public partial class MainWindow : Window
             ? RestoreBounds
             : new Rect(Left, Top, Width, Height);
 
-        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用圆角、边框与 DWM 阴影
+        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用圆角、边框、边框线与 DWM 阴影
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
         ToolbarBorder.Visibility = Visibility.Collapsed;
         RootGrid.Margin = new Thickness(0);
         SetCornerPreference(DwmwcpDoNotRound);
         BorderThickness = new Thickness(0);
+        SetBorderColor(DwmwaColorNone);
         SetNcRendering(false);
 
         // 标准全屏：无边框窗口按显示器 DPI 精确覆盖整个显示器。
@@ -468,6 +485,7 @@ public partial class MainWindow : Window
         ToolbarBorder.Visibility = Visibility.Visible;
         SetCornerPreference(DwmwcpRound);
         BorderThickness = new Thickness(1);
+        SetBorderColor(0xFF3C4043); // 恢复与主题协调的深灰描边
         SetNcRendering(true);
 
         if (_fsWasMaximized)
