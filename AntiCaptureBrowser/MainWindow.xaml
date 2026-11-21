@@ -160,8 +160,8 @@
                                                                VerticalAlignment="Center" HorizontalAlignment="Left"
                                                                TextTrimming="CharacterEllipsis" FontSize="12" />
                                                     <!-- 声音图标：播放音频时显示，点击切换该标签页静音 -->
-                                                    <Button x:Name="AudioBtn" Grid.Column="2" Width="20" Height="20"
-                                                            Margin="2,0,0,0" Content="&#xE767;" FontSize="10"
+                                                    <Button x:Name="AudioBtn" Grid.Column="2" Width="22" Height="22"
+                                                            Margin="2,0,0,0" Content="&#xE767;" FontSize="13"
                                                             Style="{StaticResource IconButton}" Visibility="Collapsed"
                                                             Click="TabAudio_Click" ToolTip="静音/取消静音标签页" />
                                                     <Button x:Name="CloseBtn" Grid.Column="3" Width="20" Height="20"
