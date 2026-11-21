@@ -455,6 +455,9 @@ public partial class MainWindow : Window
             ? RestoreBounds
             : new Rect(Left, Top, Width, Height);
 
+        // 第一步就移除 WS_THICKFRAME：之后的状态切换与尺寸变化都不会画出白色调整边框
+        SetThickFrame(false);
+
         // 隐藏标题栏与工具栏，内容铺满整个窗口
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
@@ -479,8 +482,7 @@ public partial class MainWindow : Window
         }
 
         // 状态切换会触发 OnStateChanged，按普通窗口恢复 1px 边框与 6px 调整边框，
-        // 因此全屏样式必须在状态切换之后统一覆盖；WS_THICKFRAME 最后移除，
-        // 彻底去掉 DWM 绘制的白色可拖动调整边框
+        // 因此其余全屏样式必须在状态切换之后统一覆盖
         RootGrid.Margin = new Thickness(0);
         BorderThickness = new Thickness(0);
         SetCornerPreference(DwmwcpDoNotRound);
@@ -490,7 +492,6 @@ public partial class MainWindow : Window
         {
             chrome.ResizeBorderThickness = new Thickness(0);
         }
-        SetThickFrame(false);
         Activate();
     }
 
@@ -1082,7 +1083,6 @@ public partial class MainWindow : Window
     private BrowserTab? _pendingDragTab;
     private Point _pendingDragStart;
     private BrowserTab? _dragTab;
-    private Point _dragStartPos;
     private bool _isDragging;
 
     /// <summary>按标签数量与可用宽度计算每个标签的宽度和尺寸模式（增减标签时带宽度动画）。</summary>
