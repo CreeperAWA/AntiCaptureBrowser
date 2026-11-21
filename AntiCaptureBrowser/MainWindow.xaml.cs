@@ -373,43 +373,21 @@ public partial class MainWindow : Window
     }
 
     [DllImport("user32.dll")]
-    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpi);
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
-    /// <summary>
-    /// 目标显示器矩形换算为 WPF DIP。必须使用该显示器的有效 DPI 换算，
-    /// 使窗口物理矩形与显示器矩形完全一致——这是系统判定"前台窗口全屏"
-    /// 并自动隐藏任务栏的依据，坐标不匹配时任务栏不会隐藏。
-    /// </summary>
-    private Rect GetMonitorDipRect(IntPtr hwnd)
+    private const uint SwpNoZorder = 0x0004;
+
+    private bool GetMonitorRect(IntPtr hwnd, out RECT rc)
     {
         var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
         var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-        if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref mi))
+        if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
         {
-            return new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
-                            SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+            rc = new RECT { L = mi.RcMonitor.Left, T = mi.RcMonitor.Top, R = mi.RcMonitor.Right, B = mi.RcMonitor.Bottom };
+            return true;
         }
-
-        var physical = new Rect(mi.RcMonitor.Left, mi.RcMonitor.Top,
-                                mi.RcMonitor.Right - mi.RcMonitor.Left,
-                                mi.RcMonitor.Bottom - mi.RcMonitor.Top);
-
-        double scale = 1.0;
-        try
-        {
-            if (GetDpiForMonitor(monitor, MdtEffectiveDpi, out uint dpiX, out _) == 0 && dpiX > 0)
-            {
-                scale = dpiX / 96.0;
-            }
-        }
-        catch
-        {
-            scale = VisualTreeHelper.GetDpi(this).PixelsPerInchX / 96.0;
-        }
-        if (scale <= 0) scale = 1.0;
-
-        return new Rect(physical.Left / scale, physical.Top / scale,
-                        physical.Width / scale, physical.Height / scale);
+        rc = default;
+        return false;
     }
 
     private bool _htmlFsActive;       // 页面处于 HTML5 全屏
@@ -417,17 +395,6 @@ public partial class MainWindow : Window
     private bool _isUiFullScreen;     // 当前是否处于全屏布局
     private bool _fsWasMaximized;
     private Rect _fsSavedBounds;
-
-    private static Rect GetMonitorRect(IntPtr hwnd)
-    {
-        var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
-        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-        return monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi)
-            ? new Rect(mi.RcMonitor.Left, mi.RcMonitor.Top,
-                       mi.RcMonitor.Right - mi.RcMonitor.Left, mi.RcMonitor.Bottom - mi.RcMonitor.Top)
-            : new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
-                       SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
-    }
 
     private void OnTabFullScreenChanged(object? sender, bool fullScreen)
     {
@@ -467,14 +434,23 @@ public partial class MainWindow : Window
         SetBorderColor(DwmwaColorNone);
         SetNcRendering(false);
 
-        // 标准全屏：无边框窗口按显示器 DPI 精确覆盖整个显示器。
-        // 前台窗口覆盖整个显示器时，系统会自动隐藏任务栏，无需置顶。
+        // 标准全屏：窗口状态切 Normal 后，用物理像素直接校准窗口矩形 = 显示器矩形
+        //（GetMonitorInfo 与 SetWindowPos 同一坐标系，与 DPI 感知模式无关，无白边）
         WindowState = WindowState.Normal;
-        var rect = GetMonitorDipRect(new WindowInteropHelper(this).EnsureHandle());
-        Left = rect.Left;
-        Top = rect.Top;
-        Width = rect.Width;
-        Height = rect.Height;
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        if (GetMonitorRect(hwnd, out var rc))
+        {
+            SetWindowPos(hwnd, IntPtr.Zero, rc.L, rc.T, rc.R - rc.L, rc.B - rc.T, SwpNoZorder);
+        }
+        else
+        {
+            // 兜底：主显示器工作区
+            var wa = SystemParameters.WorkArea;
+            Left = wa.Left;
+            Top = wa.Top;
+            Width = wa.Width;
+            Height = wa.Height;
+        }
         Activate();
     }
 
