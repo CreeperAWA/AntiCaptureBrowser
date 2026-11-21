@@ -105,7 +105,7 @@
         <Border x:Name="TitleBarBorder" Grid.Row="0" Background="{DynamicResource ChromeBgBrush}">
             <DockPanel Margin="10,0,0,0" LastChildFill="True">
                 <!-- 窗口控制按钮 -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                <StackPanel x:Name="CaptionButtonsPanel" DockPanel.Dock="Right" Orientation="Horizontal"
                             WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button x:Name="BtnMinimize" Style="{StaticResource CaptionButton}"
                             Content="&#xE921;" ToolTip="最小化" Click="BtnMinimize_Click" />
