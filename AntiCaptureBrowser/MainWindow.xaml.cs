@@ -994,8 +994,8 @@ public partial class MainWindow : Window
         bool maximized = WindowState == WindowState.Maximized;
         // 最大化时保留标题栏上沿留白（窗口背景色与标题栏同色，视觉连续），
         // 但窗口控制按钮贴顶填满标题栏高度（与 Chrome 一致）
-        RootGrid.Margin = maximized ? new Thickness(0, 6, 0, 0) : new Thickness(0);
-        CaptionButtonsPanel.Margin = maximized ? new Thickness(0, -6, 0, 0) : new Thickness(0);
+        RootGrid.Margin = maximized ? new Thickness(0, 3, 0, 0) : new Thickness(0);
+        CaptionButtonsPanel.Margin = maximized ? new Thickness(0, -3, 0, 0) : new Thickness(0);
         BtnMaximize.Content = maximized ? '\uE923' : '\uE922'; // ChromeRestore / ChromeMaximize
         ToolTipService.SetToolTip(BtnMaximize, maximized ? "还原" : "最大化");
 
