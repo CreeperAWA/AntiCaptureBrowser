@@ -59,6 +59,8 @@ public partial class MainWindow : Window
             }
 
             SaveWindowBounds();
+            _boundsAnimating = false; // 停止进行中的尺寸动画，避免回调触碰已关闭的窗口
+            _boundsAnimTimer.Stop();
             _hotkeyService.Dispose();
             _keyboardHook.Dispose();
             _affinityWatcher.Dispose();
@@ -363,6 +365,12 @@ public partial class MainWindow : Window
                 handled = true;
             }
         }
+        else if (msg == WmNcLButtonDblClk && wParam.ToInt32() == HtCaption)
+        {
+            // 拦截标题栏双击：改用带动画的最大化/还原
+            AnimatedToggleMaximize();
+            handled = true;
+        }
         return IntPtr.Zero;
     }
 
@@ -393,6 +401,9 @@ public partial class MainWindow : Window
     {
         public int Left, Top, Right, Bottom;
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
@@ -458,18 +469,32 @@ public partial class MainWindow : Window
         // 第一步就移除 WS_THICKFRAME：之后的状态切换与尺寸变化都不会画出白色调整边框
         SetThickFrame(false);
 
-        // 隐藏标题栏与工具栏，内容铺满整个窗口
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        GetWindowRect(hwnd, out var from);
+
+        // 切回 Normal；若此前是最大化，立即把窗口原位放回（取消状态切换自带的还原跳变），
+        // 再从当前矩形动画过渡到显示器矩形
+        //（GetMonitorInfo 与 SetWindowPos 同一坐标系，与 DPI 感知模式无关，无白边）
+        WindowState = WindowState.Normal;
+        SetWindowPos(hwnd, IntPtr.Zero, from.Left, from.Top, from.Right - from.Left, from.Bottom - from.Top, SwpNoZorder);
+
+        // 隐藏标题栏与工具栏；样式覆盖必须在状态切换（OnStateChanged）之后
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
         ToolbarBorder.Visibility = Visibility.Collapsed;
+        RootGrid.Margin = new Thickness(0);
+        BorderThickness = new Thickness(0);
+        SetCornerPreference(DwmwcpDoNotRound);
+        SetBorderColor(DwmwaColorNone);
+        SetNcRendering(false);
+        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = new Thickness(0);
+        }
 
-        // 标准全屏：窗口状态切 Normal 后，用物理像素直接校准窗口矩形 = 显示器矩形
-        //（GetMonitorInfo 与 SetWindowPos 同一坐标系，与 DPI 感知模式无关，无白边）
-        WindowState = WindowState.Normal;
-        var hwnd = new WindowInteropHelper(this).EnsureHandle();
         if (GetMonitorRect(hwnd, out var rc))
         {
-            SetWindowPos(hwnd, IntPtr.Zero, rc.Left, rc.Top, rc.Right - rc.Left, rc.Bottom - rc.Top, SwpNoZorder);
+            AnimateWindowRect(rc, null); // 纯矩形动画，终点即显示器矩形
         }
         else
         {
@@ -480,35 +505,44 @@ public partial class MainWindow : Window
             Width = wa.Width;
             Height = wa.Height;
         }
-
-        // 状态切换会触发 OnStateChanged，按普通窗口恢复 1px 边框与 6px 调整边框，
-        // 因此其余全屏样式必须在状态切换之后统一覆盖
-        RootGrid.Margin = new Thickness(0);
-        BorderThickness = new Thickness(0);
-        SetCornerPreference(DwmwcpDoNotRound);
-        SetBorderColor(DwmwaColorNone);
-        SetNcRendering(false);
-        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
-        {
-            chrome.ResizeBorderThickness = new Thickness(0);
-        }
         Activate();
     }
 
     private void ExitFullScreen()
     {
+        // 界面与 DWM 样式先恢复；WS_THICKFRAME 与调整边框在动画结束后恢复，避免白色边框闪现
         TitleBarBorder.Visibility = Visibility.Visible;
         TitleRow.Height = new GridLength(40);
         ToolbarBorder.Visibility = Visibility.Visible;
-        SetThickFrame(true); // 先恢复 WS_THICKFRAME，让状态切换按正常窗口样式进行
+        SetCornerPreference(DwmwcpRound);
+        SetBorderColor(unchecked((int)0xFF3C4043)); // 恢复与主题协调的深灰描边
+        SetNcRendering(true);
+
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        if (_fsWasMaximized && GetWorkRect(hwnd, out var work))
+        {
+            AnimateWindowRect(work, ApplyRestoredStyle); // 动画回工作区，结束时恢复最大化
+        }
+        else if (!_fsWasMaximized)
+        {
+            AnimateWindowRect(DipToPhysicalRect(_fsSavedBounds), ApplyRestoredStyle);
+        }
+        else
+        {
+            ApplyRestoredStyle(); // 显示器信息获取失败：立即还原
+        }
+        Activate(); // 恢复前台，任务栏随之回来
+    }
+
+    /// <summary>退出全屏动画结束后：恢复窗口样式并切回原窗口状态。</summary>
+    private void ApplyRestoredStyle()
+    {
+        SetThickFrame(true);
         if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
         {
             chrome.ResizeBorderThickness = _fsWasMaximized ? new Thickness(0) : new Thickness(6);
         }
-        SetCornerPreference(DwmwcpRound);
         BorderThickness = _fsWasMaximized ? new Thickness(0) : new Thickness(1);
-        SetBorderColor(unchecked((int)0xFF3C4043)); // 恢复与主题协调的深灰描边
-        SetNcRendering(true);
 
         if (_fsWasMaximized)
         {
@@ -521,10 +555,129 @@ public partial class MainWindow : Window
             Width = _fsSavedBounds.Width;
             Height = _fsSavedBounds.Height;
         }
-        Activate(); // 恢复前台，任务栏随之回来
     }
 
     private void EnableRoundedCorners() => SetCornerPreference(DwmwcpRound);
+
+    // ==================== 窗口尺寸变化动画（最大化/还原/全屏过渡） ====================
+
+    private const int WmNcLButtonDblClk = 0x00A3;
+    private const int HtCaption = 2;
+    private const uint SwpNoActivate = 0x0010;
+    private const int BoundsAnimMs = 120; // 最大化/还原/全屏过渡时长
+
+    private readonly DispatcherTimer _boundsAnimTimer = new(DispatcherPriority.Render)
+    {
+        Interval = TimeSpan.FromMilliseconds(16),
+    };
+    private IntPtr _animHwnd;
+    private RECT _animFrom, _animTo;
+    private long _animStartTimestamp;
+    private bool _boundsAnimating;
+    private Action? _animFinished;
+
+    /// <summary>把窗口矩形按 ease-out 缓动从当前位置动画到目标物理矩形，完成后执行 finished。</summary>
+    private void AnimateWindowRect(RECT to, Action? finished)
+    {
+        FinishBoundsAnimation(); // 有动画进行中则先立即结算，避免叠加
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        GetWindowRect(hwnd, out _animFrom);
+        _animHwnd = hwnd;
+        _animTo = to;
+        _animStartTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        _animFinished = finished;
+        _boundsAnimating = true;
+        _boundsAnimTimer.Tick += OnBoundsAnimTick;
+        _boundsAnimTimer.Start();
+    }
+
+    private void OnBoundsAnimTick(object? sender, EventArgs e)
+    {
+        if (!_boundsAnimating)
+        {
+            _boundsAnimTimer.Stop();
+            return;
+        }
+        double elapsedMs = (System.Diagnostics.Stopwatch.GetTimestamp() - _animStartTimestamp) * 1000.0
+                           / System.Diagnostics.Stopwatch.Frequency;
+        if (elapsedMs >= BoundsAnimMs)
+        {
+            FinishBoundsAnimation();
+            return;
+        }
+        double t = 1 - Math.Pow(1 - elapsedMs / BoundsAnimMs, 3); // ease-out cubic
+        SetWindowPos(_animHwnd, IntPtr.Zero,
+            Lerp(_animFrom.Left, _animTo.Left, t),
+            Lerp(_animFrom.Top, _animTo.Top, t),
+            Lerp(_animFrom.Right - _animFrom.Left, _animTo.Right - _animTo.Left, t),
+            Lerp(_animFrom.Bottom - _animFrom.Top, _animTo.Bottom - _animTo.Top, t),
+            SwpNoZorder | SwpNoActivate);
+    }
+
+    /// <summary>立即结束动画：跳到目标矩形并执行完成回调。</summary>
+    private void FinishBoundsAnimation()
+    {
+        if (!_boundsAnimating) return;
+        _boundsAnimating = false;
+        _boundsAnimTimer.Stop();
+        _boundsAnimTimer.Tick -= OnBoundsAnimTick;
+        SetWindowPos(_animHwnd, IntPtr.Zero, _animTo.Left, _animTo.Top,
+            _animTo.Right - _animTo.Left, _animTo.Bottom - _animTo.Top, SwpNoZorder | SwpNoActivate);
+        var finished = _animFinished;
+        _animFinished = null;
+        finished?.Invoke();
+    }
+
+    private static int Lerp(int a, int b, double t) => a + (int)Math.Round((b - a) * t);
+
+    /// <summary>DIP 矩形 → 物理像素矩形（按窗口当前 DPI）。</summary>
+    private RECT DipToPhysicalRect(Rect dip)
+    {
+        double dpiScaleX = VisualTreeHelper.GetDpi(this).PixelsPerInchX / 96.0;
+        double dpiScaleY = VisualTreeHelper.GetDpi(this).PixelsPerInchY / 96.0;
+        return new RECT
+        {
+            Left = (int)Math.Round(dip.X * dpiScaleX),
+            Top = (int)Math.Round(dip.Y * dpiScaleY),
+            Right = (int)Math.Round((dip.X + dip.Width) * dpiScaleX),
+            Bottom = (int)Math.Round((dip.Y + dip.Height) * dpiScaleY),
+        };
+    }
+
+    /// <summary>窗口所在显示器的工作区（物理像素，不含任务栏）。</summary>
+    private bool GetWorkRect(IntPtr hwnd, out RECT rc)
+    {
+        var mi = new MonitorInfo { CbSize = Marshal.SizeOf<MonitorInfo>() };
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
+        {
+            rc = new RECT { Left = mi.RcWork.Left, Top = mi.RcWork.Top, Right = mi.RcWork.Right, Bottom = mi.RcWork.Bottom };
+            return true;
+        }
+        rc = default;
+        return false;
+    }
+
+    /// <summary>带动画的最大化/还原（最大化按钮与标题栏双击）。</summary>
+    private void AnimatedToggleMaximize()
+    {
+        if (_isUiFullScreen) return; // 全屏布局下不响应
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        if (WindowState == WindowState.Maximized)
+        {
+            // 还原：动画回还原矩形，结束时切回 Normal（WPF 按 RestoreBounds 定位，与动画终点一致）
+            AnimateWindowRect(DipToPhysicalRect(RestoreBounds), () => WindowState = WindowState.Normal);
+        }
+        else if (GetWorkRect(hwnd, out var work))
+        {
+            // 最大化：动画到当前显示器工作区，结束时置 Maximized（GETMINMAXINFO 保证矩形一致）
+            AnimateWindowRect(work, () => WindowState = WindowState.Maximized);
+        }
+        else
+        {
+            WindowState = WindowState.Maximized; // 显示器信息获取失败时立即切换
+        }
+    }
 
     // ==================== 自定义标题栏窗口按钮 ====================
 
@@ -532,7 +685,7 @@ public partial class MainWindow : Window
         => WindowState = WindowState.Minimized;
 
     private void BtnMaximize_Click(object sender, RoutedEventArgs e)
-        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        => AnimatedToggleMaximize();
 
     private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
 
