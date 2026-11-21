@@ -302,6 +302,25 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>WS_THICKFRAME 开关：全屏时移除标准可调整边框，DWM 不再绘制白色调整区，也无法拖动缩放。</summary>
+    private void SetThickFrame(bool enabled)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            int style = GetWindowLong(hwnd, GwlStyle);
+            int target = enabled ? (style | WsThickframe) : (style & ~WsThickframe);
+            if (target != style)
+            {
+                SetWindowLong(hwnd, GwlStyle, target);
+            }
+        }
+        catch
+        {
+            // 样式读写失败不影响运行
+        }
+    }
+
     // ==================== 最大化限定到工作区（WM_GETMINMAXINFO，标准做法） ====================
     // 自定义标题栏窗口默认最大化会覆盖整个显示器（含任务栏）。
     // 标准做法是钩住 WM_GETMINMAXINFO，把最大化目标位置/尺寸
@@ -378,6 +397,15 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
+    private const int GwlStyle = -16;
+    private const int WsThickframe = 0x00040000; // 可调整大小的标准边框（含 DWM 白色调整区）
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
     private const uint SwpNoZorder = 0x0004;
 
     private bool GetMonitorRect(IntPtr hwnd, out RECT rc)
@@ -427,15 +455,10 @@ public partial class MainWindow : Window
             ? RestoreBounds
             : new Rect(Left, Top, Width, Height);
 
-        // 隐藏标题栏与工具栏，内容铺满整个窗口；禁用圆角、边框、边框线与 DWM 阴影
+        // 隐藏标题栏与工具栏，内容铺满整个窗口
         TitleBarBorder.Visibility = Visibility.Collapsed;
         TitleRow.Height = new GridLength(0);
         ToolbarBorder.Visibility = Visibility.Collapsed;
-        RootGrid.Margin = new Thickness(0);
-        SetCornerPreference(DwmwcpDoNotRound);
-        BorderThickness = new Thickness(0);
-        SetBorderColor(DwmwaColorNone);
-        SetNcRendering(false);
 
         // 标准全屏：窗口状态切 Normal 后，用物理像素直接校准窗口矩形 = 显示器矩形
         //（GetMonitorInfo 与 SetWindowPos 同一坐标系，与 DPI 感知模式无关，无白边）
@@ -454,6 +477,20 @@ public partial class MainWindow : Window
             Width = wa.Width;
             Height = wa.Height;
         }
+
+        // 状态切换会触发 OnStateChanged，按普通窗口恢复 1px 边框与 6px 调整边框，
+        // 因此全屏样式必须在状态切换之后统一覆盖；WS_THICKFRAME 最后移除，
+        // 彻底去掉 DWM 绘制的白色可拖动调整边框
+        RootGrid.Margin = new Thickness(0);
+        BorderThickness = new Thickness(0);
+        SetCornerPreference(DwmwcpDoNotRound);
+        SetBorderColor(DwmwaColorNone);
+        SetNcRendering(false);
+        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = new Thickness(0);
+        }
+        SetThickFrame(false);
         Activate();
     }
 
@@ -462,8 +499,13 @@ public partial class MainWindow : Window
         TitleBarBorder.Visibility = Visibility.Visible;
         TitleRow.Height = new GridLength(40);
         ToolbarBorder.Visibility = Visibility.Visible;
+        SetThickFrame(true); // 先恢复 WS_THICKFRAME，让状态切换按正常窗口样式进行
+        if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = _fsWasMaximized ? new Thickness(0) : new Thickness(6);
+        }
         SetCornerPreference(DwmwcpRound);
-        BorderThickness = new Thickness(1);
+        BorderThickness = _fsWasMaximized ? new Thickness(0) : new Thickness(1);
         SetBorderColor(unchecked((int)0xFF3C4043)); // 恢复与主题协调的深灰描边
         SetNcRendering(true);
 
