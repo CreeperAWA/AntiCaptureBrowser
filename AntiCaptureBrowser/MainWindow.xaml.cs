@@ -254,6 +254,11 @@ public partial class MainWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
+    /// <summary>等待 DWM 完成一次合成。MSDN 推荐：窗口尺寸动画每帧先 DwmFlush 再
+    /// SetWindowPos，让矩形变化对齐合成节奏，呈现帧间隔均匀、不再抽搐。</summary>
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmFlush();
+
     private const int DwmwcpDoNotRound = 1;
     private const int DwmwcpRound = 2;
     private const int DwmwaNcRenderingPolicy = 3;
@@ -568,13 +573,16 @@ public partial class MainWindow : Window
 
     private readonly DispatcherTimer _boundsAnimTimer = new(DispatcherPriority.Render)
     {
-        Interval = TimeSpan.FromMilliseconds(16),
+        Interval = TimeSpan.FromMilliseconds(1), // 实际节奏由帧间隔下限 + DwmFlush 掌控
     };
     private IntPtr _animHwnd;
     private RECT _animFrom, _animTo;
     private long _animStartTimestamp;
+    private long _lastFrameTimestamp;
     private bool _boundsAnimating;
     private Action? _animFinished;
+
+    private const int FrameGateMs = 15; // 帧间隔下限（约 60fps 上限），避免计时器热循环
 
     /// <summary>把窗口矩形按 ease-out 缓动从当前位置动画到目标物理矩形，完成后执行 finished。</summary>
     private void AnimateWindowRect(RECT to, Action? finished)
@@ -585,6 +593,7 @@ public partial class MainWindow : Window
         _animHwnd = hwnd;
         _animTo = to;
         _animStartTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        _lastFrameTimestamp = _animStartTimestamp;
         _animFinished = finished;
         _boundsAnimating = true;
         FreezeRootLayout();
@@ -621,7 +630,14 @@ public partial class MainWindow : Window
             FinishBoundsAnimation();
             return;
         }
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if ((now - _lastFrameTimestamp) * 1000.0 / System.Diagnostics.Stopwatch.Frequency < FrameGateMs)
+        {
+            return; // 未到下一帧，等待计时器再次触发
+        }
+        _lastFrameTimestamp = now;
         double t = 1 - Math.Pow(1 - elapsedMs / BoundsAnimMs, 3); // ease-out cubic
+        DwmFlush(); // 与 DWM 合成节奏对齐后再调整窗口（失败时由帧间隔下限兜底）
         SetWindowPos(_animHwnd, IntPtr.Zero,
             Lerp(_animFrom.Left, _animTo.Left, t),
             Lerp(_animFrom.Top, _animTo.Top, t),
