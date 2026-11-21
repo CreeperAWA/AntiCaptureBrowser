@@ -145,6 +145,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <Grid x:Name="IconHost" Width="16" Margin="0,0,6,0"
                                                           VerticalAlignment="Center">
@@ -158,8 +159,13 @@
                                                     <TextBlock x:Name="TitleText" Grid.Column="1" Text="{Binding Title}"
                                                                VerticalAlignment="Center" HorizontalAlignment="Left"
                                                                TextTrimming="CharacterEllipsis" FontSize="12" />
-                                                    <Button x:Name="CloseBtn" Grid.Column="2" Width="20" Height="20"
-                                                            Margin="6,0,0,0" Content="&#xE711;" FontSize="9"
+                                                    <!-- 声音图标：播放音频时显示，点击切换该标签页静音 -->
+                                                    <Button x:Name="AudioBtn" Grid.Column="2" Width="20" Height="20"
+                                                            Margin="2,0,0,0" Content="&#xE767;" FontSize="10"
+                                                            Style="{StaticResource IconButton}" Visibility="Collapsed"
+                                                            Click="TabAudio_Click" ToolTip="静音/取消静音标签页" />
+                                                    <Button x:Name="CloseBtn" Grid.Column="3" Width="20" Height="20"
+                                                            Margin="4,0,0,0" Content="&#xE711;" FontSize="9"
                                                             Style="{StaticResource IconButton}" Visibility="Collapsed"
                                                             Click="TabClose_Click" ToolTip="关闭标签页 (Ctrl+W)" />
                                                 </Grid>
@@ -202,6 +208,23 @@
                                                 <Trigger SourceName="CloseBtn" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="CloseBtn" Property="Foreground" Value="White" />
                                                 </Trigger>
+                                                <!-- 正在播放音频：显示声音图标（静音时切换为静音字形） -->
+                                                <DataTrigger Binding="{Binding IsAudioPlaying}" Value="True">
+                                                    <Setter TargetName="AudioBtn" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsMuted}" Value="True">
+                                                    <Setter TargetName="AudioBtn" Property="Content" Value="&#xE74F;" />
+                                                </DataTrigger>
+                                                <!-- 仅图标模式且在播放：声音图标替换站点图标 -->
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding TabWidthMode}" Value="Icon" />
+                                                        <Condition Binding="{Binding IsAudioPlaying}" Value="True" />
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter TargetName="IconHost" Property="Visibility" Value="Collapsed" />
+                                                    <Setter TargetName="AudioBtn" Property="Grid.Column" Value="0" />
+                                                    <Setter TargetName="AudioBtn" Property="Margin" Value="0,0,0,0" />
+                                                </MultiDataTrigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Button.Template>

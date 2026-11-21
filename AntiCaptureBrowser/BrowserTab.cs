@@ -92,6 +92,22 @@ public class BrowserTab : INotifyPropertyChanged
         }
     }
 
+    private bool _isAudioPlaying;
+    /// <summary>页面正在输出音频（静音中的播放也算，Chrome 同款语义）。</summary>
+    public bool IsAudioPlaying
+    {
+        get => _isAudioPlaying;
+        private set { if (_isAudioPlaying != value) { _isAudioPlaying = value; OnPropertyChanged(); } }
+    }
+
+    private bool _isMuted;
+    /// <summary>WebView2 输出静音状态（标签页声音图标/隐藏时静音都会改变它）。</summary>
+    public bool IsMuted
+    {
+        get => _isMuted;
+        private set { if (_isMuted != value) { _isMuted = value; OnPropertyChanged(); } }
+    }
+
     public string CurrentUrl => WebView?.CoreWebView2?.Source ?? WebView?.Source?.ToString() ?? "";
 
     // 由 MainWindow 订阅的交互请求
@@ -105,6 +121,10 @@ public class BrowserTab : INotifyPropertyChanged
 
     private const string PauseMediaScript =
         "document.querySelectorAll('video,audio').forEach(function(m){try{m.pause()}catch(e){}});";
+
+    private const string ResumeMediaScript =
+        "(function(){var ms=document.querySelectorAll('video,audio');for(var i=0;i<ms.length;i++){" +
+        "var m=ms[i];if(m.paused&&!m.ended&&m.readyState>1){m.play().catch(function(){});return;}}})();";
 
     private bool _wasMutedBeforeSilence;
 
@@ -178,6 +198,11 @@ public class BrowserTab : INotifyPropertyChanged
         ApplyUserAgent();
         // 让网页内容跟随应用主题（prefers-color-scheme）
         core.Profile.PreferredColorScheme = ThemeManager.ResolveWebColorScheme();
+        // 音频状态：标签页声音图标与系统媒体控制（SMTC）的数据源
+        core.IsDocumentPlayingAudioChanged += (_, _) => SyncAudioState(() => IsAudioPlaying = core.IsDocumentPlayingAudio);
+        core.IsMutedChanged += (_, _) => SyncAudioState(() => IsMuted = core.IsMuted);
+        IsAudioPlaying = core.IsDocumentPlayingAudio;
+        IsMuted = core.IsMuted;
 
         if (!string.IsNullOrWhiteSpace(initialUrl))
         {
@@ -230,6 +255,35 @@ public class BrowserTab : INotifyPropertyChanged
         var core = WebView?.CoreWebView2;
         if (core is null) return;
         core.Settings.UserAgent = App.Settings.ResolveUserAgent() ?? "";
+    }
+
+    /// <summary>切换本标签页静音（标签页声音图标/右键菜单），状态由 IsMutedChanged 事件同步。</summary>
+    public void ToggleMute()
+    {
+        var core = WebView?.CoreWebView2;
+        if (core is null) return;
+        core.IsMuted = !core.IsMuted;
+    }
+
+    /// <summary>系统媒体控制（SMTC）请求播放或暂停当前标签页的媒体。</summary>
+    public void PlayPause(bool play)
+    {
+        var core = WebView?.CoreWebView2;
+        if (core is null) return;
+        _ = core.ExecuteScriptAsync(play ? ResumeMediaScript : PauseMediaScript);
+    }
+
+    /// <summary>音频事件可能来自非 UI 线程（同 FaviconChanged），统一回调度器后再改绑定属性。</summary>
+    private void SyncAudioState(Action apply)
+    {
+        if (Application.Current.Dispatcher.CheckAccess())
+        {
+            apply();
+        }
+        else
+        {
+            Application.Current.Dispatcher.InvokeAsync(apply);
+        }
     }
 
     /// <summary>

@@ -71,10 +71,17 @@ public partial class MainWindow : Window
         };
         // 系统主题切换时同步所有已打开标签页的配色
         ThemeManager.ThemeChanged += ApplyThemeToTabs;
-        // 标签页数量或窗口尺寸变化时重算宽度
-        Tabs.CollectionChanged += (_, e) => UpdateTabWidths(
-            e.Action is NotifyCollectionChangedAction.Add or NotifyCollectionChangedAction.Remove
+        // 标签页数量或窗口尺寸变化时重算宽度；关闭标签页后同步刷新媒体会话
+        Tabs.CollectionChanged += (_, e) =>
+        {
+            UpdateTabWidths(e.Action is NotifyCollectionChangedAction.Add
+                or NotifyCollectionChangedAction.Remove
                 or NotifyCollectionChangedAction.Reset);
+            if (e.Action is NotifyCollectionChangedAction.Remove or NotifyCollectionChangedAction.Reset)
+            {
+                UpdateSmtc();
+            }
+        };
         TabScroll.SizeChanged += (_, _) => UpdateTabWidths();
         _suggestTimer.Tick += (_, _) => { _suggestTimer.Stop(); _ = FetchSuggestionsAsync(); };
         StartParkingTimer();
@@ -98,6 +105,7 @@ public partial class MainWindow : Window
         // WM_GETMINMAXINFO，导致最大化矩形外扩盖住任务栏
         var hwndSource = (HwndSource?)PresentationSource.FromVisual(this);
         hwndSource?.AddHook(_maximizeHook);
+        _smtc.PlayPauseRequested += OnSmtcPlayPause;
         RestoreWindowBounds();
         InitTrayIcon();
         ApplyTraySettings();
@@ -162,6 +170,7 @@ public partial class MainWindow : Window
         RegisterGlobalHotkey();
         ApplyCaptureMode();
         UpdateTrayVisibility();
+        ApplySmtc(); // 窗口句柄重建后 SMTC 需重新绑定
     }
 
     private void ShowTrayMenu()
@@ -649,9 +658,15 @@ public partial class MainWindow : Window
 
     private void OnTabPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(BrowserTab.Title) && sender == _selectedTab)
+        if (sender is not BrowserTab tab) return;
+        if (e.PropertyName == nameof(BrowserTab.Title))
         {
-            UpdateWindowTitle();
+            if (tab == _selectedTab) UpdateWindowTitle();
+            if (tab == _mediaTab) UpdateSmtc(); // 媒体标签页标题变化，同步 SMTC 元数据
+        }
+        else if (e.PropertyName == nameof(BrowserTab.IsAudioPlaying))
+        {
+            UpdateMediaSession(tab);
         }
     }
 
@@ -914,6 +929,16 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>标签页声音图标：切换该标签页静音（不切换选中标签页）。</summary>
+    private void TabAudio_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true; // 阻止冒泡到 TabButton_Click（Chrome：点击声音图标不切换标签页）
+        if ((sender as FrameworkElement)?.DataContext is BrowserTab tab)
+        {
+            tab.ToggleMute();
+        }
+    }
+
     private void OnSelectedTabHistoryChanged(object? sender, EventArgs e)
     {
         if (ReferenceEquals(sender, _selectedTab)) UpdateNavButtons();
@@ -1028,6 +1053,59 @@ public partial class MainWindow : Window
     }
 
     // ==================== 隐藏/最小化时的媒体静音与暂停 ====================
+
+    // ==================== 系统媒体控制（SMTC：音量弹窗 / 媒体键） ====================
+
+    private readonly Services.SmtcService _smtc = new();
+    private BrowserTab? _mediaTab; // 拥有 SMTC 的标签页：最近开始出声者（Chrome 同款策略）
+
+    private void ApplySmtc()
+    {
+        _smtc.Initialize(new WindowInteropHelper(this).EnsureHandle());
+        UpdateSmtc();
+    }
+
+    private void OnSmtcPlayPause(object? sender, bool play)
+    {
+        // SMTC 按键事件来自非 UI 线程，回调度器后控制媒体标签页
+        Dispatcher.Invoke(() =>
+        {
+            if (_mediaTab is { IsWebViewReady: true } tab)
+            {
+                tab.PlayPause(play);
+            }
+        });
+    }
+
+    private void UpdateMediaSession(BrowserTab tab)
+    {
+        if (tab.IsAudioPlaying) _mediaTab = tab; // 最近开始出声的标签页接管媒体会话
+        UpdateSmtc();
+    }
+
+    private void UpdateSmtc()
+    {
+        if (_mediaTab is not null && !Tabs.Contains(_mediaTab)) _mediaTab = null; // 标签页已关闭
+        var tab = _mediaTab;
+        if (tab is null)
+        {
+            _smtc.Update(null, null, playing: false, hasMedia: false);
+            return;
+        }
+        string site = "";
+        try
+        {
+            if (Uri.TryCreate(tab.CurrentUrl, UriKind.Absolute, out var uri) && uri.Host.Length > 0)
+            {
+                site = uri.Host.StartsWith("www.") ? uri.Host[4..] : uri.Host;
+            }
+        }
+        catch
+        {
+            // 无效地址不影响 SMTC 更新
+        }
+        _smtc.Update(tab.Title, site, playing: tab.IsAudioPlaying, hasMedia: true);
+    }
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
