@@ -587,8 +587,24 @@ public partial class MainWindow : Window
         _animStartTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         _animFinished = finished;
         _boundsAnimating = true;
+        FreezeRootLayout();
         _boundsAnimTimer.Tick += OnBoundsAnimTick;
         _boundsAnimTimer.Start();
+    }
+
+    /// <summary>动画期间冻结根布局：窗口矩形逐帧变化时内容保持静止，
+    /// WebView2/Chromium 不随之重新光栅化（否则每帧重分配合成缓冲区导致内存暴涨），
+    /// WPF 布局近乎空转（否则 UI 线程过载、tick 间隔不均导致动画抽搐）。</summary>
+    private void FreezeRootLayout()
+    {
+        if (RootGrid.ActualWidth > 0) RootGrid.Width = RootGrid.ActualWidth;
+        if (RootGrid.ActualHeight > 0) RootGrid.Height = RootGrid.ActualHeight;
+    }
+
+    private void UnfreezeRootLayout()
+    {
+        RootGrid.Width = double.NaN;
+        RootGrid.Height = double.NaN;
     }
 
     private void OnBoundsAnimTick(object? sender, EventArgs e)
@@ -621,6 +637,7 @@ public partial class MainWindow : Window
         _boundsAnimating = false;
         _boundsAnimTimer.Stop();
         _boundsAnimTimer.Tick -= OnBoundsAnimTick;
+        UnfreezeRootLayout(); // 先恢复铺满，最终 SetWindowPos 触发的一次布局即可完成收尾
         SetWindowPos(_animHwnd, IntPtr.Zero, _animTo.Left, _animTo.Top,
             _animTo.Right - _animTo.Left, _animTo.Bottom - _animTo.Top, SwpNoZorder | SwpNoActivate);
         var finished = _animFinished;
