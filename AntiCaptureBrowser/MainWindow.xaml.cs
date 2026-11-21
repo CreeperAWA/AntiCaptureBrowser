@@ -354,6 +354,9 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MonitorInfo lpi);
+
     [DllImport("shcore.dll")]
     private static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
 
@@ -383,7 +386,7 @@ public partial class MainWindow : Window
         var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
         if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref mi))
         {
-            rc = new RECT { L = mi.RcMonitor.Left, T = mi.RcMonitor.Top, R = mi.RcMonitor.Right, B = mi.RcMonitor.Bottom };
+            rc = new RECT { Left = mi.RcMonitor.Left, Top = mi.RcMonitor.Top, Right = mi.RcMonitor.Right, Bottom = mi.RcMonitor.Bottom };
             return true;
         }
         rc = default;
@@ -440,7 +443,7 @@ public partial class MainWindow : Window
         var hwnd = new WindowInteropHelper(this).EnsureHandle();
         if (GetMonitorRect(hwnd, out var rc))
         {
-            SetWindowPos(hwnd, IntPtr.Zero, rc.L, rc.T, rc.R - rc.L, rc.B - rc.T, SwpNoZorder);
+            SetWindowPos(hwnd, IntPtr.Zero, rc.Left, rc.Top, rc.Right - rc.Left, rc.Bottom - rc.Top, SwpNoZorder);
         }
         else
         {
