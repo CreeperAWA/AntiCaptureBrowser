@@ -485,7 +485,7 @@ public partial class MainWindow : Window
         ToolbarBorder.Visibility = Visibility.Visible;
         SetCornerPreference(DwmwcpRound);
         BorderThickness = new Thickness(1);
-        SetBorderColor(0xFF3C4043); // 恢复与主题协调的深灰描边
+        SetBorderColor(unchecked((int)0xFF3C4043)); // 恢复与主题协调的深灰描边
         SetNcRendering(true);
 
         if (_fsWasMaximized)
